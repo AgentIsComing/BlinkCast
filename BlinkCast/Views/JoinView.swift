@@ -1,11 +1,7 @@
 import SwiftUI
 
 struct JoinView: View {
-    enum JoinMethod:
-        String,
-        CaseIterable,
-        Identifiable {
-
+    enum JoinMethod: String, CaseIterable, Identifiable {
         case code = "Join Code"
         case room = "Room"
 
@@ -14,17 +10,11 @@ struct JoinView: View {
         }
     }
 
-    @StateObject private var joinService =
-        JoinCodeService.shared
+    @StateObject private var joinService = JoinCodeService.shared
+    @StateObject private var signalingService = SignalingService.shared
 
-    @StateObject private var signalingService =
-        SignalingService.shared
-
-    @State private var method:
-        JoinMethod = .room
-
+    @State private var method: JoinMethod = .code
     @State private var joinCode = ""
-
     @State private var roomName = ""
     @State private var roomPassword = ""
 
@@ -41,14 +31,9 @@ struct JoinView: View {
                             "Join Method",
                             selection: $method
                         ) {
-                            ForEach(
-                                JoinMethod
-                                    .allCases
-                            ) { item in
-                                Text(
-                                    item.rawValue
-                                )
-                                .tag(item)
+                            ForEach(JoinMethod.allCases) { item in
+                                Text(item.rawValue)
+                                    .tag(item)
                             }
                         }
                         .pickerStyle(.segmented)
@@ -66,19 +51,20 @@ struct JoinView: View {
             .frame(maxWidth: .infinity)
         }
         .navigationTitle("Join")
-        .onChange(
-            of: signalingService.state
-        ) { _, _ in
-            joinService
-                .updateFromSignaling()
+        .onChange(of: signalingService.state) { _, _ in
+            joinService.updateFromSignaling()
+        }
+        .onChange(of: method) { _, _ in
+            if !isConnected && !isBusy {
+                joinService.resetJoinState()
+            }
         }
     }
 
     private var header: some View {
         VStack(spacing: 16) {
             BlinkIconBadge(
-                systemImage:
-                    "play.rectangle.fill",
+                systemImage: "play.rectangle.fill",
                 size: 78
             )
 
@@ -92,26 +78,17 @@ struct JoinView: View {
                         )
                     )
 
-                Text(
-                    "Connect to another BlinkCast device."
-                )
-                .font(.title3)
-                .foregroundStyle(
-                    .secondary
-                )
+                Text("Connect to another BlinkCast device.")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
             }
         }
     }
 
     private var codeJoin: some View {
         VStack(spacing: 20) {
-            Text(
-                "5-digit codes will be connected to the cross-platform service next."
-            )
-            .font(.headline)
-            .multilineTextAlignment(
-                .center
-            )
+            Text("Enter the 5-digit code")
+                .font(.headline)
 
             TextField(
                 "00000",
@@ -125,14 +102,11 @@ struct JoinView: View {
                     design: .rounded
                 )
             )
-            .multilineTextAlignment(
-                .center
-            )
+            .multilineTextAlignment(.center)
             .padding(.vertical, 16)
             .padding(.horizontal, 20)
             .background(
-                Color.primary
-                    .opacity(0.05)
+                Color.primary.opacity(0.05)
             )
             .clipShape(
                 RoundedRectangle(
@@ -140,32 +114,52 @@ struct JoinView: View {
                     style: .continuous
                 )
             )
-            .onChange(
-                of: joinCode
-            ) { _, value in
-                joinCode =
-                    String(
-                        value
-                            .filter(
-                                \.isNumber
-                            )
-                            .prefix(5)
-                    )
+            .overlay {
+                RoundedRectangle(
+                    cornerRadius: 18,
+                    style: .continuous
+                )
+                .stroke(
+                    Color.primary.opacity(0.08),
+                    lineWidth: 1
+                )
+            }
+            .onChange(of: joinCode) { _, value in
+                joinCode = String(
+                    value.filter(\.isNumber).prefix(5)
+                )
             }
 
             Button {
+                Task {
+                    await joinService.joinCode(joinCode)
+                }
             } label: {
                 Label(
-                    "Join Session",
-                    systemImage:
-                        "arrow.right.circle.fill"
+                    joinButtonText,
+                    systemImage: joinButtonIcon
                 )
             }
-            .buttonStyle(
-                BlinkPrimaryButtonStyle()
+            .buttonStyle(BlinkPrimaryButtonStyle())
+            .disabled(joinCode.count != 5 || isBusy || isConnected)
+            .opacity(
+                joinCode.count == 5 && !isBusy
+                    ? 1
+                    : 0.55
             )
-            .disabled(true)
-            .opacity(0.55)
+
+            statusView
+
+            if isConnected {
+                disconnectButton
+            }
+
+            Text(
+                "The code is resolved through BlinkCast's shared code service, then this device joins the same signaling room as the Windows host."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
         }
     }
 
@@ -175,46 +169,40 @@ struct JoinView: View {
                 "Room ID",
                 text: $roomName
             )
-            .textFieldStyle(
-                .roundedBorder
-            )
+            .textFieldStyle(.roundedBorder)
 
             SecureField(
                 "Password",
                 text: $roomPassword
             )
-            .textFieldStyle(
-                .roundedBorder
-            )
+            .textFieldStyle(.roundedBorder)
 
             Button {
                 Task {
-                    await joinService
-                        .joinRoom(
-                            name:
-                                roomName,
-                            password:
-                                roomPassword
-                        )
+                    await joinService.joinRoom(
+                        name: roomName,
+                        password: roomPassword
+                    )
                 }
             } label: {
                 Label(
                     joinButtonText,
-                    systemImage:
-                        joinButtonIcon
+                    systemImage: joinButtonIcon
                 )
             }
-            .buttonStyle(
-                BlinkPrimaryButtonStyle()
-            )
+            .buttonStyle(BlinkPrimaryButtonStyle())
             .disabled(
-                roomName.isEmpty ||
+                roomName.trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                ).isEmpty ||
                 roomPassword.isEmpty ||
-                isBusy
+                isBusy ||
+                isConnected
             )
             .opacity(
-                roomName.isEmpty ||
-                roomPassword.isEmpty
+                roomName.trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                ).isEmpty || roomPassword.isEmpty
                     ? 0.55
                     : 1
             )
@@ -222,21 +210,21 @@ struct JoinView: View {
             statusView
 
             if isConnected {
-                Button {
-                    joinService
-                        .leaveSession()
-                } label: {
-                    Label(
-                        "Disconnect",
-                        systemImage:
-                            "xmark.circle.fill"
-                    )
-                }
-                .buttonStyle(
-                    BlinkSecondaryButtonStyle()
-                )
+                disconnectButton
             }
         }
+    }
+
+    private var disconnectButton: some View {
+        Button {
+            joinService.leaveSession()
+        } label: {
+            Label(
+                "Disconnect",
+                systemImage: "xmark.circle.fill"
+            )
+        }
+        .buttonStyle(BlinkSecondaryButtonStyle())
     }
 
     @ViewBuilder
@@ -247,47 +235,36 @@ struct JoinView: View {
 
         case .resolving:
             statusRow(
-                text:
-                    "Finding Windows host...",
-                icon:
-                    "magnifyingglass",
+                text: "Finding session...",
+                icon: "magnifyingglass",
                 tint: .secondary
             )
 
         case .connecting:
             statusRow(
-                text:
-                    "Connecting to signaling...",
-                icon:
-                    "antenna.radiowaves.left.and.right",
+                text: "Connecting to signaling...",
+                icon: "antenna.radiowaves.left.and.right",
                 tint: .orange
             )
 
         case .waitingForHost:
             statusRow(
-                text:
-                    "Connected. Waiting for host...",
-                icon:
-                    "clock.fill",
+                text: "Connected. Waiting for host...",
+                icon: "clock.fill",
                 tint: .orange
             )
 
         case .connected:
             statusRow(
-                text:
-                    "Connected to host",
-                icon:
-                    "checkmark.circle.fill",
+                text: "Signaling connected to host",
+                icon: "checkmark.circle.fill",
                 tint: .green
             )
 
-        case .failed(
-            let message
-        ):
+        case .failed(let message):
             statusRow(
                 text: message,
-                icon:
-                    "exclamationmark.triangle.fill",
+                icon: "exclamationmark.triangle.fill",
                 tint: .red
             )
         }
@@ -299,26 +276,20 @@ struct JoinView: View {
         tint: Color
     ) -> some View {
         HStack(spacing: 8) {
-            Image(
-                systemName: icon
-            )
-            .foregroundStyle(tint)
+            Image(systemName: icon)
+                .foregroundStyle(tint)
 
             Text(text)
                 .font(.caption)
                 .foregroundStyle(tint)
         }
-        .multilineTextAlignment(
-            .center
-        )
+        .multilineTextAlignment(.center)
     }
 
     private var isBusy: Bool {
         switch joinService.joinState {
-        case .resolving,
-             .connecting:
+        case .resolving, .connecting:
             return true
-
         default:
             return false
         }
@@ -326,10 +297,8 @@ struct JoinView: View {
 
     private var isConnected: Bool {
         switch joinService.joinState {
-        case .connected,
-             .waitingForHost:
+        case .connected, .waitingForHost:
             return true
-
         default:
             return false
         }
@@ -338,34 +307,26 @@ struct JoinView: View {
     private var joinButtonText: String {
         switch joinService.joinState {
         case .resolving:
-            return "Finding Room..."
-
+            return "Finding Session..."
         case .connecting:
             return "Connecting..."
-
         case .connected:
             return "Connected"
-
         case .waitingForHost:
             return "Waiting for Host"
-
         default:
-            return "Join Room"
+            return method == .code ? "Join Session" : "Join Room"
         }
     }
 
     private var joinButtonIcon: String {
         switch joinService.joinState {
         case .connected:
-            return
-                "checkmark.circle.fill"
-
+            return "checkmark.circle.fill"
         case .waitingForHost:
             return "clock.fill"
-
         default:
-            return
-                "arrow.right.circle.fill"
+            return "arrow.right.circle.fill"
         }
     }
 }
