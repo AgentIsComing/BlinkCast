@@ -30,6 +30,14 @@ final class SignalingService: NSObject, ObservableObject {
     var onViewerJoined: (() -> Void)?
     var onBroadcastEnded: (() -> Void)?
 
+    var currentClientID: String {
+        clientID
+    }
+
+    var currentRole: Role {
+        role
+    }
+
     private var webSocketTask: URLSessionWebSocketTask?
     private var urlSession: URLSession?
 
@@ -49,27 +57,20 @@ final class SignalingService: NSObject, ObservableObject {
     ) {
         disconnect()
 
-        guard let normalizedURL = normalizeSignalURL(
-            signalURL
-        ) else {
-            state = .failed(
-                "Invalid signaling URL."
-            )
+        guard let normalizedURL = normalizeSignalURL(signalURL) else {
+            state = .failed("Invalid signaling URL.")
             return
         }
 
         self.signalURL = normalizedURL
         self.roomID = roomID
         self.role = role
-        self.clientID =
-            "\(role.rawValue)-\(UUID().uuidString.lowercased().prefix(8))"
+        self.clientID = "\(role.rawValue)-\(UUID().uuidString.lowercased().prefix(8))"
 
         state = .connecting
         hostAvailable = false
 
-        let configuration =
-            URLSessionConfiguration.default
-
+        let configuration = URLSessionConfiguration.default
         let session = URLSession(
             configuration: configuration,
             delegate: self,
@@ -78,24 +79,15 @@ final class SignalingService: NSObject, ObservableObject {
 
         urlSession = session
 
-        let task =
-            session.webSocketTask(
-                with: normalizedURL
-            )
-
+        let task = session.webSocketTask(with: normalizedURL)
         webSocketTask = task
-
         task.resume()
 
         receiveNextMessage()
     }
 
     func disconnect() {
-        webSocketTask?.cancel(
-            with: .normalClosure,
-            reason: nil
-        )
-
+        webSocketTask?.cancel(with: .normalClosure, reason: nil)
         webSocketTask = nil
 
         urlSession?.invalidateAndCancel()
@@ -105,9 +97,7 @@ final class SignalingService: NSObject, ObservableObject {
         hostAvailable = false
     }
 
-    func sendSignal(
-        _ data: [String: Any]
-    ) {
+    func sendSignal(_ data: [String: Any]) {
         sendJSON([
             "type": "signal",
             "data": data
@@ -135,51 +125,32 @@ final class SignalingService: NSObject, ObservableObject {
         sendJSON(payload)
     }
 
-    private func sendJSON(
-        _ payload: [String: Any]
-    ) {
+    private func sendJSON(_ payload: [String: Any]) {
         guard
             let webSocketTask,
-            JSONSerialization.isValidJSONObject(
-                payload
-            )
+            JSONSerialization.isValidJSONObject(payload)
         else {
             return
         }
 
         do {
-            let data =
-                try JSONSerialization.data(
-                    withJSONObject: payload
-                )
+            let data = try JSONSerialization.data(withJSONObject: payload)
 
-            guard
-                let string = String(
-                    data: data,
-                    encoding: .utf8
-                )
-            else {
+            guard let string = String(data: data, encoding: .utf8) else {
                 return
             }
 
-            webSocketTask.send(
-                .string(string)
-            ) { [weak self] error in
+            webSocketTask.send(.string(string)) { [weak self] error in
                 guard let error else {
                     return
                 }
 
                 Task { @MainActor in
-                    self?.state =
-                        .failed(
-                            error.localizedDescription
-                        )
+                    self?.state = .failed(error.localizedDescription)
                 }
             }
         } catch {
-            state = .failed(
-                error.localizedDescription
-            )
+            state = .failed(error.localizedDescription)
         }
     }
 
@@ -188,9 +159,7 @@ final class SignalingService: NSObject, ObservableObject {
             return
         }
 
-        webSocketTask.receive {
-            [weak self] result in
-
+        webSocketTask.receive { [weak self] result in
             guard let self else {
                 return
             }
@@ -204,30 +173,20 @@ final class SignalingService: NSObject, ObservableObject {
 
             case .failure(let error):
                 Task { @MainActor in
-                    self.state =
-                        .failed(
-                            error.localizedDescription
-                        )
+                    self.state = .failed(error.localizedDescription)
                 }
             }
         }
     }
 
-    private func handle(
-        _ message: URLSessionWebSocketTask.Message
-    ) {
+    private func handle(_ message: URLSessionWebSocketTask.Message) {
         let data: Data
 
         switch message {
         case .string(let string):
-            guard let converted =
-                string.data(
-                    using: .utf8
-                )
-            else {
+            guard let converted = string.data(using: .utf8) else {
                 return
             }
-
             data = converted
 
         case .data(let rawData):
@@ -238,14 +197,9 @@ final class SignalingService: NSObject, ObservableObject {
         }
 
         guard
-            let object =
-                try? JSONSerialization.jsonObject(
-                    with: data
-                ),
-            let dictionary =
-                object as? [String: Any],
-            let type =
-                dictionary["type"] as? String
+            let object = try? JSONSerialization.jsonObject(with: data),
+            let dictionary = object as? [String: Any],
+            let type = dictionary["type"] as? String
         else {
             return
         }
@@ -254,16 +208,11 @@ final class SignalingService: NSObject, ObservableObject {
         case "joined":
             state = .joined
 
-            if let available =
-                dictionary[
-                    "hostAvailable"
-                ] as? Bool {
+            if let available = dictionary["hostAvailable"] as? Bool {
                 hostAvailable = available
 
-                if role == .viewer &&
-                    !available {
-                    state =
-                        .waitingForHost
+                if role == .viewer && !available {
+                    state = .waitingForHost
                 }
             }
 
@@ -275,32 +224,19 @@ final class SignalingService: NSObject, ObservableObject {
             onViewerJoined?()
 
         case "signal":
-            guard
-                let signalData =
-                    dictionary[
-                        "data"
-                    ] as? [String: Any]
-            else {
+            guard let signalData = dictionary["data"] as? [String: Any] else {
                 return
             }
 
-            onSignal?(
-                SignalEnvelope(
-                    data: signalData
-                )
-            )
+            onSignal?(SignalEnvelope(data: signalData))
 
         case "broadcast-ended":
             state = .disconnected
             onBroadcastEnded?()
 
         case "error":
-            let message =
-                dictionary[
-                    "message"
-                ] as? String
+            let message = dictionary["message"] as? String
                 ?? "Unknown signaling error."
-
             state = .failed(message)
 
         default:
@@ -308,61 +244,37 @@ final class SignalingService: NSObject, ObservableObject {
         }
     }
 
-    private func normalizeSignalURL(
-        _ value: String
-    ) -> URL? {
-        var value =
-            value.trimmingCharacters(
-                in: .whitespacesAndNewlines
-            )
+    private func normalizeSignalURL(_ value: String) -> URL? {
+        var value = value.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !value.isEmpty else {
             return nil
         }
 
         if value.hasPrefix("https://") {
-            value =
-                "wss://" +
-                value.dropFirst(
-                    "https://".count
-                )
+            value = "wss://" + value.dropFirst("https://".count)
         }
 
         if value.hasPrefix("http://") {
-            value =
-                "ws://" +
-                value.dropFirst(
-                    "http://".count
-                )
+            value = "ws://" + value.dropFirst("http://".count)
         }
 
-        guard
-            value.hasPrefix("ws://") ||
-            value.hasPrefix("wss://")
-        else {
+        guard value.hasPrefix("ws://") || value.hasPrefix("wss://") else {
             return nil
         }
 
         if !value.hasSuffix("/signal") {
-            value =
-                value.trimmingCharacters(
-                    in: CharacterSet(
-                        charactersIn: "/"
-                    )
-                )
-
+            value = value.trimmingCharacters(
+                in: CharacterSet(charactersIn: "/")
+            )
             value += "/signal"
         }
 
-        return URL(
-            string: value
-        )
+        return URL(string: value)
     }
 }
 
-extension SignalingService:
-    URLSessionWebSocketDelegate {
-
+extension SignalingService: URLSessionWebSocketDelegate {
     nonisolated func urlSession(
         _ session: URLSession,
         webSocketTask: URLSessionWebSocketTask,
@@ -377,18 +289,16 @@ extension SignalingService:
     nonisolated func urlSession(
         _ session: URLSession,
         webSocketTask: URLSessionWebSocketTask,
-        didCloseWith closeCode:
-            URLSessionWebSocketTask.CloseCode,
+        didCloseWith closeCode: URLSessionWebSocketTask.CloseCode,
         reason: Data?
     ) {
         Task { @MainActor in
-            if self.state != .failed(
-                ""
-            ) {
-                self.state =
-                    .disconnected
+            switch self.state {
+            case .failed:
+                break
+            default:
+                self.state = .disconnected
             }
         }
     }
 }
-
