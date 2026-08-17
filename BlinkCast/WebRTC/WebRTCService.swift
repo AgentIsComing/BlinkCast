@@ -84,7 +84,7 @@ final class WebRTCService: NSObject, ObservableObject {
 
         let constraints = RTCMediaConstraints(
             mandatoryConstraints: [
-                "OfferToReceiveAudio": "true",
+                "OfferToReceiveAudio": "false",
                 "OfferToReceiveVideo": "true"
             ],
             optionalConstraints: nil
