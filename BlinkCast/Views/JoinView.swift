@@ -12,6 +12,7 @@ struct JoinView: View {
 
     @StateObject private var joinService = JoinCodeService.shared
     @StateObject private var signalingService = SignalingService.shared
+    @StateObject private var webRTCService = WebRTCService.shared
 
     @State private var method: JoinMethod = .code
     @State private var joinCode = ""
@@ -25,27 +26,11 @@ struct JoinView: View {
 
                 header
 
-                BlinkGlassCard {
-                    VStack(spacing: 22) {
-                        Picker(
-                            "Join Method",
-                            selection: $method
-                        ) {
-                            ForEach(JoinMethod.allCases) { item in
-                                Text(item.rawValue)
-                                    .tag(item)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-
-                        if method == .code {
-                            codeJoin
-                        } else {
-                            roomJoin
-                        }
-                    }
+                if let track = webRTCService.remoteVideoTrack {
+                    videoCard(track: track)
+                } else {
+                    joinCard
                 }
-                .frame(maxWidth: 520)
             }
             .padding(30)
             .frame(maxWidth: .infinity)
@@ -53,12 +38,42 @@ struct JoinView: View {
         .navigationTitle("Join")
         .onChange(of: signalingService.state) { _, _ in
             joinService.updateFromSignaling()
+            webRTCService.signalingDidUpdate()
         }
         .onChange(of: method) { _, _ in
             if !isConnected && !isBusy {
                 joinService.resetJoinState()
             }
         }
+        .onDisappear {
+            if !isConnected {
+                webRTCService.stop()
+            }
+        }
+    }
+
+    private var joinCard: some View {
+        BlinkGlassCard {
+            VStack(spacing: 22) {
+                Picker(
+                    "Join Method",
+                    selection: $method
+                ) {
+                    ForEach(JoinMethod.allCases) { item in
+                        Text(item.rawValue)
+                            .tag(item)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                if method == .code {
+                    codeJoin
+                } else {
+                    roomJoin
+                }
+            }
+        }
+        .frame(maxWidth: 520)
     }
 
     private var header: some View {
@@ -69,7 +84,7 @@ struct JoinView: View {
             )
 
             VStack(spacing: 7) {
-                Text("Join a Session")
+                Text(webRTCService.remoteVideoTrack == nil ? "Join a Session" : "BlinkCast Live")
                     .font(
                         .system(
                             size: 38,
@@ -78,9 +93,13 @@ struct JoinView: View {
                         )
                     )
 
-                Text("Connect to another BlinkCast device.")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
+                Text(
+                    webRTCService.remoteVideoTrack == nil
+                        ? "Connect to another BlinkCast device."
+                        : "Streaming from the connected host."
+                )
+                .font(.title3)
+                .foregroundStyle(.secondary)
             }
         }
     }
@@ -132,6 +151,7 @@ struct JoinView: View {
 
             Button {
                 Task {
+                    webRTCService.stop()
                     await joinService.joinCode(joinCode)
                 }
             } label: {
@@ -179,6 +199,7 @@ struct JoinView: View {
 
             Button {
                 Task {
+                    webRTCService.stop()
                     await joinService.joinRoom(
                         name: roomName,
                         password: roomPassword
@@ -215,9 +236,59 @@ struct JoinView: View {
         }
     }
 
+    private func videoCard(track: WebRTC.RTCVideoTrack) -> some View {
+        VStack(spacing: 18) {
+            ZStack {
+                RoundedRectangle(
+                    cornerRadius: 24,
+                    style: .continuous
+                )
+                .fill(Color.black)
+
+                BlinkRemoteVideoView(track: track)
+                    .clipShape(
+                        RoundedRectangle(
+                            cornerRadius: 24,
+                            style: .continuous
+                        )
+                    )
+            }
+            .aspectRatio(16 / 9, contentMode: .fit)
+            .frame(maxWidth: 1100)
+            .overlay {
+                RoundedRectangle(
+                    cornerRadius: 24,
+                    style: .continuous
+                )
+                .stroke(
+                    Color.white.opacity(0.10),
+                    lineWidth: 1
+                )
+            }
+
+            HStack(spacing: 12) {
+                BlinkStatusPill(
+                    text: webRTCStatusText,
+                    systemImage: webRTCStatusIcon,
+                    tint: webRTCStatusTint
+                )
+
+                Button {
+                    disconnect()
+                } label: {
+                    Label(
+                        "Disconnect",
+                        systemImage: "xmark.circle.fill"
+                    )
+                }
+                .buttonStyle(BlinkSecondaryButtonStyle())
+            }
+        }
+    }
+
     private var disconnectButton: some View {
         Button {
-            joinService.leaveSession()
+            disconnect()
         } label: {
             Label(
                 "Disconnect",
@@ -255,11 +326,35 @@ struct JoinView: View {
             )
 
         case .connected:
-            statusRow(
-                text: "Signaling connected to host",
-                icon: "checkmark.circle.fill",
-                tint: .green
-            )
+            switch webRTCService.state {
+            case .idle, .preparing:
+                statusRow(
+                    text: "Preparing WebRTC...",
+                    icon: "gearshape.2.fill",
+                    tint: .orange
+                )
+
+            case .negotiating:
+                statusRow(
+                    text: "Negotiating video stream...",
+                    icon: "arrow.triangle.2.circlepath",
+                    tint: .orange
+                )
+
+            case .connected:
+                statusRow(
+                    text: "Video connected",
+                    icon: "checkmark.circle.fill",
+                    tint: .green
+                )
+
+            case .failed(let message):
+                statusRow(
+                    text: message,
+                    icon: "exclamationmark.triangle.fill",
+                    tint: .red
+                )
+            }
 
         case .failed(let message):
             statusRow(
@@ -284,6 +379,11 @@ struct JoinView: View {
                 .foregroundStyle(tint)
         }
         .multilineTextAlignment(.center)
+    }
+
+    private func disconnect() {
+        webRTCService.stop()
+        joinService.leaveSession()
     }
 
     private var isBusy: Bool {
@@ -311,7 +411,12 @@ struct JoinView: View {
         case .connecting:
             return "Connecting..."
         case .connected:
-            return "Connected"
+            switch webRTCService.state {
+            case .connected:
+                return "Streaming"
+            default:
+                return "Connecting Video..."
+            }
         case .waitingForHost:
             return "Waiting for Host"
         default:
@@ -322,11 +427,50 @@ struct JoinView: View {
     private var joinButtonIcon: String {
         switch joinService.joinState {
         case .connected:
-            return "checkmark.circle.fill"
+            return webRTCService.state == .connected
+                ? "play.rectangle.fill"
+                : "arrow.triangle.2.circlepath"
         case .waitingForHost:
             return "clock.fill"
         default:
             return "arrow.right.circle.fill"
+        }
+    }
+
+    private var webRTCStatusText: String {
+        switch webRTCService.state {
+        case .connected:
+            return "Connected"
+        case .negotiating:
+            return "Negotiating"
+        case .preparing:
+            return "Preparing"
+        case .failed:
+            return "Connection Error"
+        case .idle:
+            return "Idle"
+        }
+    }
+
+    private var webRTCStatusIcon: String {
+        switch webRTCService.state {
+        case .connected:
+            return "checkmark.circle.fill"
+        case .failed:
+            return "exclamationmark.triangle.fill"
+        default:
+            return "antenna.radiowaves.left.and.right"
+        }
+    }
+
+    private var webRTCStatusTint: Color {
+        switch webRTCService.state {
+        case .connected:
+            return .green
+        case .failed:
+            return .red
+        default:
+            return .orange
         }
     }
 }
