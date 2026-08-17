@@ -1,0 +1,235 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "BlinkCast: Build macOS",
+      "type": "shell",
+      "command": "xcodebuild",
+      "args": [
+        "-project",
+        "BlinkCast.xcodeproj",
+        "-scheme",
+        "BlinkCast",
+        "-configuration",
+        "Debug",
+        "-destination",
+        "platform=macOS",
+        "build"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "silent",
+        "revealProblems": "onProblem",
+        "panel": "dedicated",
+        "clear": true,
+        "focus": false
+      },
+      "problemMatcher": [
+        {
+          "owner": "swift",
+          "fileLocation": "absolute",
+          "pattern": {
+            "regexp": "^(.+\\.swift):(\\d+):(\\d+):\\s+(warning|error|note):\\s+(.+)$",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "severity": 4,
+            "message": 5
+          }
+        }
+      ]
+    },
+    {
+      "label": "BlinkCast: Continuous Diagnostics",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "python3 .vscode/watch_diagnostics.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
+      "presentation": {
+        "reveal": "silent",
+        "revealProblems": "onProblem",
+        "panel": "dedicated",
+        "clear": false,
+        "focus": false
+      },
+      "problemMatcher": [
+        {
+          "owner": "swift",
+          "fileLocation": "absolute",
+          "pattern": {
+            "regexp": "^(.+\\.swift):(\\d+):(\\d+):\\s+(warning|error|note):\\s+(.+)$",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "severity": 4,
+            "message": 5
+          },
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "^\\[BlinkCast Diagnostics\\] watching",
+            "endsPattern": "^\\[BlinkCast Diagnostics\\] ready"
+          }
+        }
+      ]
+    },
+    {
+      "label": "BlinkCast: Clean + Build macOS",
+      "type": "shell",
+      "command": "xcodebuild",
+      "args": [
+        "-project",
+        "BlinkCast.xcodeproj",
+        "-scheme",
+        "BlinkCast",
+        "-configuration",
+        "Debug",
+        "-destination",
+        "platform=macOS",
+        "clean",
+        "build"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "revealProblems": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": [
+        {
+          "owner": "swift",
+          "fileLocation": "absolute",
+          "pattern": {
+            "regexp": "^(.+\\.swift):(\\d+):(\\d+):\\s+(warning|error|note):\\s+(.+)$",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "severity": 4,
+            "message": 5
+          }
+        }
+      ]
+    },
+    {
+      "label": "BlinkCast: Clean macOS",
+      "type": "shell",
+      "command": "xcodebuild",
+      "args": [
+        "-project",
+        "BlinkCast.xcodeproj",
+        "-scheme",
+        "BlinkCast",
+        "-configuration",
+        "Debug",
+        "-destination",
+        "platform=macOS",
+        "clean"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "BlinkCast: Run macOS",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData/BlinkCast-*/Build/Products/Debug -maxdepth 1 -name 'BlinkCast.app' | head -n 1); if [ -z \"$APP_PATH\" ]; then echo 'BlinkCast.app not found. Build first.'; exit 1; fi; open \"$APP_PATH\""
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "BlinkCast: Build + Run macOS",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "BlinkCast: Build macOS",
+        "BlinkCast: Run macOS"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "BlinkCast: Watch macOS Logs",
+      "type": "shell",
+      "command": "log",
+      "args": [
+        "stream",
+        "--style",
+        "compact",
+        "--level",
+        "debug",
+        "--predicate",
+        "process == \"BlinkCast\""
+      ],
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "BlinkCast: Watch Errors + Warnings",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "log stream --style compact --level debug --predicate 'process == \"BlinkCast\"' | grep --line-buffered -Ei 'error|warning|failed|failure|crash|fault|exception|network|websocket|webrtc|sandbox'"
+      ],
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "BlinkCast: Build iOS Simulator",
+      "type": "shell",
+      "command": "xcodebuild",
+      "args": [
+        "-project",
+        "BlinkCast.xcodeproj",
+        "-scheme",
+        "BlinkCast",
+        "-configuration",
+        "Debug",
+        "-sdk",
+        "iphonesimulator",
+        "-destination",
+        "generic/platform=iOS Simulator",
+        "build"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [
+        {
+          "owner": "swift",
+          "fileLocation": "absolute",
+          "pattern": {
+            "regexp": "^(.+\\.swift):(\\d+):(\\d+):\\s+(warning|error|note):\\s+(.+)$",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "severity": 4,
+            "message": 5
+          }
+        }
+      ]
+    }
+  ]
+}

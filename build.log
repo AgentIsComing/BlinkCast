@@ -1,0 +1,374 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project BlinkCast.xcodeproj -scheme BlinkCast -configuration Debug -destination platform=macOS clean build
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+** CLEAN SUCCEEDED **
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (1 target)
+    Target 'BlinkCast' in project 'BlinkCast' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: 97df71d32e72eb7f6140731c01d2846e
+Build description path: /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/XCBuildData/97df71d32e72eb7f6140731c01d2846e.xcbuilddata
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk /Users/jay/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache
+    cd /Users/jay/Documents/Project/BlinkCast/BlinkCast.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -o /Users/jay/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache
+Base directory status changed. Regenerating...
+
+CreateBuildDirectory /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex
+    cd /Users/jay/Documents/Project/BlinkCast/BlinkCast.xcodeproj
+    builtin-create-build-directory /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex
+
+CreateBuildDirectory /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products
+    cd /Users/jay/Documents/Project/BlinkCast/BlinkCast.xcodeproj
+    builtin-create-build-directory /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products
+
+CreateBuildDirectory /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug
+    cd /Users/jay/Documents/Project/BlinkCast/BlinkCast.xcodeproj
+    builtin-create-build-directory /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug
+
+CreateBuildDirectory /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+    cd /Users/jay/Documents/Project/BlinkCast/BlinkCast.xcodeproj
+    builtin-create-build-directory /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+
+CreateBuildDirectory /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/ExplicitPrecompiledModules
+    cd /Users/jay/Documents/Project/BlinkCast/BlinkCast.xcodeproj
+    builtin-create-build-directory /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/ExplicitPrecompiledModules
+
+CreateBuildDirectory /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/EagerLinkingTBDs/Debug
+    cd /Users/jay/Documents/Project/BlinkCast/BlinkCast.xcodeproj
+    builtin-create-build-directory /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/EagerLinkingTBDs/Debug
+
+WriteAuxiliaryFile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast-70b2c6d6d4d6ab759dfeda878737cd68-VFS/all-product-headers.yaml
+    cd /Users/jay/Documents/Project/BlinkCast/BlinkCast.xcodeproj
+    write-file /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast-70b2c6d6d4d6ab759dfeda878737cd68-VFS/all-product-headers.yaml
+
+WriteAuxiliaryFile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/empty-BlinkCast.plist (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    write-file /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/empty-BlinkCast.plist
+
+WriteAuxiliaryFile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast-OutputFileMap.json (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    write-file /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast-OutputFileMap.json
+
+WriteAuxiliaryFile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast_const_extract_protocols.json (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    write-file /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast_const_extract_protocols.json
+
+WriteAuxiliaryFile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.SwiftFileList (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    write-file /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.SwiftFileList
+
+WriteAuxiliaryFile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.SwiftConstValuesFileList (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    write-file /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.LinkFileList (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    write-file /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.LinkFileList
+
+WriteAuxiliaryFile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/DerivedSources/Entitlements.plist (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    write-file /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/DerivedSources/Entitlements.plist
+
+WriteAuxiliaryFile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast.hmap (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    write-file /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast.hmap
+
+WriteAuxiliaryFile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast.DependencyStaticMetadataFileList (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    write-file /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast.DependencyMetadataFileList (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    write-file /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast.DependencyMetadataFileList
+
+WriteAuxiliaryFile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-project-headers.hmap (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    write-file /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-project-headers.hmap
+
+WriteAuxiliaryFile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-own-target-headers.hmap (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    write-file /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-own-target-headers.hmap
+
+WriteAuxiliaryFile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-generated-files.hmap (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    write-file /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-generated-files.hmap
+
+WriteAuxiliaryFile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-all-target-headers.hmap (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    write-file /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-all-target-headers.hmap
+
+WriteAuxiliaryFile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-all-non-framework-target-headers.hmap (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    write-file /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-DebugDylibPath-normal-x86_64.txt (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    write-file /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-DebugDylibPath-normal-x86_64.txt
+
+WriteAuxiliaryFile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-DebugDylibInstallName-normal-x86_64.txt (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    write-file /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-DebugDylibInstallName-normal-x86_64.txt
+
+MkDir /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/Resources (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    /bin/mkdir -p /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/Resources
+
+MkDir /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/MacOS (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    /bin/mkdir -p /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/MacOS
+
+MkDir /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    /bin/mkdir -p /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents
+
+MkDir /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    /bin/mkdir -p /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app
+
+ProcessProductPackaging "" /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast.app.xcent (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    
+    Entitlements:
+    
+    {
+    "com.apple.security.app-sandbox" = 1;
+    "com.apple.security.files.user-selected.read-only" = 1;
+    "com.apple.security.get-task-allow" = 1;
+    "com.apple.security.network.client" = 1;
+    "com.apple.security.network.server" = 1;
+}
+    
+    builtin-productPackagingUtility -entitlements -format xml -o /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast.app.xcent
+
+ProcessProductPackagingDER /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast.app.xcent /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast.app.xcent.der (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    /usr/bin/derq query -f xml -i /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast.app.xcent -o /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast.app.xcent.der --raw
+
+Ld /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/MacOS/__preview.dylib normal (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target x86_64-apple-macos26.5 -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -O0 -L/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug -F/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug -install_name @rpath/BlinkCast.debug.dylib -rdynamic -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast_dependency_info.dat -Xlinker -no_adhoc_codesign -o /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/MacOS/__preview.dylib
+
+GenerateAssetSymbols /Users/jay/Documents/Project/BlinkCast/BlinkCast/Assets.xcassets (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    /Applications/Xcode.app/Contents/Developer/usr/bin/actool /Users/jay/Documents/Project/BlinkCast/BlinkCast/Assets.xcassets --compile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/Resources --output-format human-readable-text --notices --warnings --export-dependency-info /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/assetcatalog_dependencies --output-partial-info-plist /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/assetcatalog_generated_info.plist --app-icon AppIcon --accent-color AccentColor --enable-on-demand-resources NO --development-region en --target-device mac --minimum-deployment-target 26.5 --platform macosx --bundle-identifier JaysApps.BlinkCast --generate-swift-asset-symbols /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/DerivedSources/GeneratedAssetSymbols.swift --generate-objc-asset-symbols /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/DerivedSources/GeneratedAssetSymbols.h --generate-asset-symbol-index /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/* com.apple.actool.compilation-results */
+/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/DerivedSources/GeneratedAssetSymbols.h
+/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/DerivedSources/GeneratedAssetSymbols.swift
+
+
+MkDir /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/assetcatalog_output/unthinned (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    /bin/mkdir -p /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/assetcatalog_output/unthinned
+
+MkDir /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/assetcatalog_output/thinned (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    /bin/mkdir -p /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/assetcatalog_output/thinned
+
+CompileAssetCatalogVariant thinned /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/Resources /Users/jay/Documents/Project/BlinkCast/BlinkCast/Assets.xcassets (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    /Applications/Xcode.app/Contents/Developer/usr/bin/actool /Users/jay/Documents/Project/BlinkCast/BlinkCast/Assets.xcassets --compile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/assetcatalog_output/thinned --output-format human-readable-text --notices --warnings --export-dependency-info /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/assetcatalog_dependencies_thinned --output-partial-info-plist /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/assetcatalog_generated_info.plist_thinned --app-icon AppIcon --accent-color AccentColor --enable-on-demand-resources NO --development-region en --target-device mac --minimum-deployment-target 26.5 --platform macosx
+/* com.apple.actool.compilation-results */
+/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/assetcatalog_generated_info.plist_thinned
+
+
+LinkAssetCatalog /Users/jay/Documents/Project/BlinkCast/BlinkCast/Assets.xcassets (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    builtin-linkAssetCatalog --thinned /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/assetcatalog_output/thinned --thinned-dependencies /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/assetcatalog_dependencies_thinned --thinned-info-plist-content /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/assetcatalog_generated_info.plist_thinned --unthinned /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/assetcatalog_output/unthinned --unthinned-dependencies /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/assetcatalog_dependencies_unthinned --unthinned-info-plist-content /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/assetcatalog_generated_info.plist_unthinned --output /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/Resources --plist-output /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/assetcatalog_generated_info.plist
+
+ProcessInfoPlistFile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/Info.plist /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/empty-BlinkCast.plist (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    builtin-infoPlistUtility /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/empty-BlinkCast.plist -producttype com.apple.product-type.application -genpkginfo /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/PkgInfo -expandbuildsettings -platform macosx -additionalcontentfile /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/assetcatalog_generated_info.plist -o /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/Info.plist
+
+SwiftDriver BlinkCast normal x86_64 com.apple.xcode.tools.swift.compiler (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name BlinkCast -Onone @/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.SwiftFileList -DDEBUG -default-isolation\=MainActor -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target x86_64-apple-macos26.5 -g -module-cache-path /Users/jay/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug -F /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug -emit-localized-strings -emit-localized-strings-path /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64 -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/jay/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/jay/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/jay/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/jay/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast_const_extract_protocols.json -Xcc -iquote -Xcc /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-generated-files.hmap -Xcc -I/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-own-target-headers.hmap -Xcc -I/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-all-target-headers.hmap -Xcc -iquote -Xcc /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-project-headers.hmap -Xcc -I/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/include -Xcc -I/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/DerivedSources-normal/x86_64 -Xcc -I/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/DerivedSources/x86_64 -Xcc -I/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast-Swift.h -working-directory /Users/jay/Documents/Project/BlinkCast -experimental-emit-module-separately -disable-cmo
+
+SwiftEmitModule normal x86_64 Emitting\ module\ for\ BlinkCast (in target 'BlinkCast' from project 'BlinkCast')
+
+EmitSwiftModule normal x86_64 (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    
+
+SwiftCompile normal x86_64 Compiling\ HomeView.swift,\ HostView.swift /Users/jay/Documents/Project/BlinkCast/BlinkCast/Views/HomeView.swift /Users/jay/Documents/Project/BlinkCast/BlinkCast/Views/HostView.swift (in target 'BlinkCast' from project 'BlinkCast')
+SwiftCompile normal x86_64 /Users/jay/Documents/Project/BlinkCast/BlinkCast/Views/HomeView.swift (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    
+
+SwiftCompile normal x86_64 /Users/jay/Documents/Project/BlinkCast/BlinkCast/Views/HostView.swift (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    
+
+SwiftCompile normal x86_64 Compiling\ BlinkCastApp.swift,\ AccentTheme.swift /Users/jay/Documents/Project/BlinkCast/BlinkCast/App/BlinkCastApp.swift /Users/jay/Documents/Project/BlinkCast/BlinkCast/Models/AccentTheme.swift (in target 'BlinkCast' from project 'BlinkCast')
+
+SwiftCompile normal x86_64 /Users/jay/Documents/Project/BlinkCast/BlinkCast/App/BlinkCastApp.swift (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    
+
+SwiftCompile normal x86_64 /Users/jay/Documents/Project/BlinkCast/BlinkCast/Models/AccentTheme.swift (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    
+
+SwiftCompile normal x86_64 Compiling\ JoinView.swift,\ OnboardingView.swift /Users/jay/Documents/Project/BlinkCast/BlinkCast/Views/JoinView.swift /Users/jay/Documents/Project/BlinkCast/BlinkCast/Views/OnboardingView.swift (in target 'BlinkCast' from project 'BlinkCast')
+
+SwiftCompile normal x86_64 /Users/jay/Documents/Project/BlinkCast/BlinkCast/Views/JoinView.swift (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    
+
+SwiftCompile normal x86_64 /Users/jay/Documents/Project/BlinkCast/BlinkCast/Views/OnboardingView.swift (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    
+
+SwiftCompile normal x86_64 Compiling\ GeneratedAssetSymbols.swift /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'BlinkCast' from project 'BlinkCast')
+
+SwiftCompile normal x86_64 /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    
+
+SwiftCompile normal x86_64 Compiling\ SettingsView.swift,\ WebRTCService.swift /Users/jay/Documents/Project/BlinkCast/BlinkCast/Views/SettingsView.swift /Users/jay/Documents/Project/BlinkCast/BlinkCast/WebRTC/WebRTCService.swift (in target 'BlinkCast' from project 'BlinkCast')
+
+SwiftCompile normal x86_64 /Users/jay/Documents/Project/BlinkCast/BlinkCast/Views/SettingsView.swift (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    
+
+SwiftCompile normal x86_64 /Users/jay/Documents/Project/BlinkCast/BlinkCast/WebRTC/WebRTCService.swift (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    
+
+SwiftCompile normal x86_64 Compiling\ ContentView.swift /Users/jay/Documents/Project/BlinkCast/BlinkCast/ContentView.swift (in target 'BlinkCast' from project 'BlinkCast')
+
+SwiftCompile normal x86_64 /Users/jay/Documents/Project/BlinkCast/BlinkCast/ContentView.swift (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    
+
+SwiftCompile normal x86_64 Compiling\ JoinCodeService.swift,\ SignalingService.swift /Users/jay/Documents/Project/BlinkCast/BlinkCast/Networking/JoinCodeService.swift /Users/jay/Documents/Project/BlinkCast/BlinkCast/Networking/SignalingService.swift (in target 'BlinkCast' from project 'BlinkCast')
+
+SwiftCompile normal x86_64 /Users/jay/Documents/Project/BlinkCast/BlinkCast/Networking/JoinCodeService.swift (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    
+
+SwiftCompile normal x86_64 /Users/jay/Documents/Project/BlinkCast/BlinkCast/Networking/SignalingService.swift (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    
+
+SwiftCompile normal x86_64 Compiling\ MacWindowConfigurator.swift,\ DesignSystem.swift /Users/jay/Documents/Project/BlinkCast/BlinkCast/Services/MacWindowConfigurator.swift /Users/jay/Documents/Project/BlinkCast/BlinkCast/Views/DesignSystem.swift (in target 'BlinkCast' from project 'BlinkCast')
+
+SwiftCompile normal x86_64 /Users/jay/Documents/Project/BlinkCast/BlinkCast/Services/MacWindowConfigurator.swift (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    
+/Users/jay/Documents/Project/BlinkCast/BlinkCast/Services/MacWindowConfigurator.swift:46:21: warning: 'showsBaselineSeparator' was deprecated in macOS 15.0: No longer supported
+            toolbar.showsBaselineSeparator = false
+                    ^
+
+SwiftCompile normal x86_64 /Users/jay/Documents/Project/BlinkCast/BlinkCast/Views/DesignSystem.swift (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    
+
+SwiftDriverJobDiscovery normal x86_64 Emitting module for BlinkCast (in target 'BlinkCast' from project 'BlinkCast')
+
+SwiftDriver\ Compilation\ Requirements BlinkCast normal x86_64 com.apple.xcode.tools.swift.compiler (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name BlinkCast -Onone @/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.SwiftFileList -DDEBUG -default-isolation\=MainActor -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target x86_64-apple-macos26.5 -g -module-cache-path /Users/jay/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug -F /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug -emit-localized-strings -emit-localized-strings-path /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64 -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/jay/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/jay/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/jay/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/jay/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast_const_extract_protocols.json -Xcc -iquote -Xcc /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-generated-files.hmap -Xcc -I/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-own-target-headers.hmap -Xcc -I/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-all-target-headers.hmap -Xcc -iquote -Xcc /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-project-headers.hmap -Xcc -I/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/include -Xcc -I/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/DerivedSources-normal/x86_64 -Xcc -I/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/DerivedSources/x86_64 -Xcc -I/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast-Swift.h -working-directory /Users/jay/Documents/Project/BlinkCast -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal x86_64 Compiling GeneratedAssetSymbols.swift (in target 'BlinkCast' from project 'BlinkCast')
+
+SwiftMergeGeneratedHeaders /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/DerivedSources/BlinkCast-Swift.h /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast-Swift.h (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    builtin-swiftHeaderTool -arch x86_64 /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast-Swift.h -o /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/DerivedSources/BlinkCast-Swift.h
+
+Copy /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.swiftmodule/x86_64-apple-macos.swiftmodule /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.swiftmodule (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.swiftmodule /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.swiftmodule/x86_64-apple-macos.swiftmodule
+
+Copy /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.swiftmodule/x86_64-apple-macos.swiftdoc /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.swiftdoc (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.swiftdoc /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.swiftmodule/x86_64-apple-macos.swiftdoc
+
+Copy /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.swiftmodule/x86_64-apple-macos.abi.json /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.abi.json (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.abi.json /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.swiftmodule/x86_64-apple-macos.abi.json
+
+Copy /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.swiftmodule/Project/x86_64-apple-macos.swiftsourceinfo /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.swiftsourceinfo (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.swiftsourceinfo /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.swiftmodule/Project/x86_64-apple-macos.swiftsourceinfo
+
+SwiftDriverJobDiscovery normal x86_64 Compiling BlinkCastApp.swift, AccentTheme.swift (in target 'BlinkCast' from project 'BlinkCast')
+
+SwiftDriverJobDiscovery normal x86_64 Compiling ContentView.swift (in target 'BlinkCast' from project 'BlinkCast')
+
+SwiftDriverJobDiscovery normal x86_64 Compiling SettingsView.swift, WebRTCService.swift (in target 'BlinkCast' from project 'BlinkCast')
+
+SwiftDriverJobDiscovery normal x86_64 Compiling JoinCodeService.swift, SignalingService.swift (in target 'BlinkCast' from project 'BlinkCast')
+
+SwiftDriverJobDiscovery normal x86_64 Compiling JoinView.swift, OnboardingView.swift (in target 'BlinkCast' from project 'BlinkCast')
+
+SwiftDriverJobDiscovery normal x86_64 Compiling MacWindowConfigurator.swift, DesignSystem.swift (in target 'BlinkCast' from project 'BlinkCast')
+
+SwiftDriverJobDiscovery normal x86_64 Compiling HomeView.swift, HostView.swift (in target 'BlinkCast' from project 'BlinkCast')
+
+SwiftDriver\ Compilation BlinkCast normal x86_64 com.apple.xcode.tools.swift.compiler (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name BlinkCast -Onone @/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.SwiftFileList -DDEBUG -default-isolation\=MainActor -enable-upcoming-feature MemberImportVisibility -enable-upcoming-feature InferIsolatedConformances -enable-upcoming-feature NonisolatedNonsendingByDefault -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target x86_64-apple-macos26.5 -g -module-cache-path /Users/jay/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug -F /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug -emit-localized-strings -emit-localized-strings-path /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64 -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /Users/jay/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx26.5-25F70-e082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /Users/jay/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -sdk-module-cache-path /Users/jay/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.swiftmodule -validate-clang-modules-once -clang-build-session-file /Users/jay/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast_const_extract_protocols.json -Xcc -iquote -Xcc /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-generated-files.hmap -Xcc -I/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-own-target-headers.hmap -Xcc -I/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-all-target-headers.hmap -Xcc -iquote -Xcc /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-project-headers.hmap -Xcc -I/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/include -Xcc -I/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/DerivedSources-normal/x86_64 -Xcc -I/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/DerivedSources/x86_64 -Xcc -I/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast-Swift.h -working-directory /Users/jay/Documents/Project/BlinkCast -experimental-emit-module-separately -disable-cmo
+
+Ld /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/MacOS/BlinkCast.debug.dylib normal (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target x86_64-apple-macos26.5 -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -O0 -L/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -L/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug -F/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -F/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug -filelist /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.LinkFileList -install_name @rpath/BlinkCast.debug.dylib -Xlinker -rpath -Xlinker @executable_path/../Frameworks -Xlinker -object_path_lto -Xlinker /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.swiftmodule @/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast-linker-args.resp -Xlinker -alias -Xlinker _main -Xlinker ___debug_main_executable_dylib_entry_point -Xlinker -no_adhoc_codesign -o /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/MacOS/BlinkCast.debug.dylib
+
+ConstructStubExecutorLinkFileList /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-ExecutorLinkFileList-normal-x86_64.txt (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    construct-stub-executor-link-file-list /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/MacOS/BlinkCast.debug.dylib /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libPreviewsJITStubExecutor_no_swift_entry_point.a /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libPreviewsJITStubExecutor.a --output /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-ExecutorLinkFileList-normal-x86_64.txt
+note: Using stub executor library with Swift entry point. (in target 'BlinkCast' from project 'BlinkCast')
+
+Ld /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/MacOS/BlinkCast normal (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target x86_64-apple-macos26.5 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -O0 -L/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug -F/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug -Xlinker -rpath -Xlinker @executable_path -Xlinker -rpath -Xlinker @executable_path/../Frameworks -rdynamic -Xlinker -no_deduplicate -e ___debug_blank_executor_main -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_dylib -Xlinker /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-DebugDylibPath-normal-x86_64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_instlnm -Xlinker /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-DebugDylibInstallName-normal-x86_64.txt -Xlinker -filelist -Xlinker /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast-ExecutorLinkFileList-normal-x86_64.txt /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/MacOS/BlinkCast.debug.dylib -Xlinker -no_adhoc_codesign -o /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/MacOS/BlinkCast
+
+ExtractAppIntentsMetadata (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name BlinkCast --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk --xcode-version 17F42 --platform-family macOS --deployment-target 26.5 --bundle-identifier JaysApps.BlinkCast --output /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/Resources --target-triple x86_64-apple-macos26.5 --binary-file /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/MacOS/BlinkCast --dependency-file /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast_dependency_info.dat --stringsdata-file /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.SwiftFileList --metadata-file-list /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast.DependencyMetadataFileList --static-metadata-file-list /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/BlinkCast.DependencyStaticMetadataFileList --swift-const-vals-list /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/Objects-normal/x86_64/BlinkCast.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-08-17 12:22:23.665 appintentsmetadataprocessor[2189:15157] Starting appintentsmetadataprocessor export
+2026-08-17 12:22:23.695 appintentsmetadataprocessor[2189:15157] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+CopySwiftLibs /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    builtin-swiftStdLibTool --copy --verbose --sign 8921E4261C17EB42D19C95E9EBB355DDE3345B10 --scan-executable /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/MacOS/BlinkCast.debug.dylib --scan-folder /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/Frameworks --scan-folder /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/PlugIns --scan-folder /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/Library/SystemExtensions --scan-folder /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/Extensions --platform macosx --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Intermediates.noindex/BlinkCast.build/Debug/BlinkCast.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+
+CodeSign /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/MacOS/BlinkCast.debug.dylib (in target 'BlinkCast' from project 'BlinkCast')
+    cd /Users/jay/Documents/Project/BlinkCast
+    
+    Signing Identity:     "Apple Development: jaydenrmaine@gmail.com (G779NP433H)"
+    
+    /usr/bin/codesign --force --sign 8921E4261C17EB42D19C95E9EBB355DDE3345B10 -o runtime --timestamp\=none --generate-entitlement-der /Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/MacOS/BlinkCast.debug.dylib
+/Users/jay/Library/Developer/Xcode/DerivedData/BlinkCast-czbfxqqdpylaxzclnaqbkpchjcua/Build/Products/Debug/BlinkCast.app/Contents/MacOS/BlinkCast.debug.dylib: errSecInternalComponent
+Command CodeSign failed with a nonzero exit code
+
