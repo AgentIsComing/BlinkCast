@@ -24,11 +24,17 @@ final class WebRTCService: NSObject, ObservableObject {
 
     @Published private(set) var state: State = .idle
     @Published private(set) var remoteVideoTrack: RTCVideoTrack?
+    @Published private(set) var localVideoTrack: RTCVideoTrack?
 
     private let signalingService = SignalingService.shared
     private let factory: RTCPeerConnectionFactory
     private var peerConnection: RTCPeerConnection?
     private var pendingRemoteCandidates: [RTCIceCandidate] = []
+    private var remoteClientID: String?
+    private var reconnectTask: Task<Void, Never>?
+    #if os(macOS)
+    private var screenCaptureService: ScreenCaptureService?
+    #endif
 
     private override init() {
         RTCInitializeSSL()
@@ -45,14 +51,15 @@ final class WebRTCService: NSObject, ObservableObject {
     }
 
     func signalingDidUpdate() {
-        guard signalingService.currentRole == .viewer else {
-            return
-        }
-
         switch signalingService.state {
         case .joined:
-            if signalingService.hostAvailable {
-                startViewerIfNeeded()
+            switch signalingService.currentRole {
+            case .viewer:
+                if signalingService.hostAvailable {
+                    startViewerIfNeeded()
+                }
+            case .host:
+                startHostingIfNeeded()
             }
         case .waitingForHost:
             break
@@ -73,23 +80,7 @@ final class WebRTCService: NSObject, ObservableObject {
 
         state = .preparing
 
-        let configuration = RTCConfiguration()
-        configuration.sdpSemantics = .unifiedPlan
-        configuration.iceServers = [
-            RTCIceServer(urlStrings: [
-                "stun:stun.l.google.com:19302",
-                "stun:stun1.l.google.com:19302"
-            ]),
-            RTCIceServer(
-                urlStrings: [
-                    "turn:openrelay.metered.ca:80",
-                    "turn:openrelay.metered.ca:443",
-                    "turn:openrelay.metered.ca:443?transport=tcp"
-                ],
-                username: "openrelayproject",
-                credential: "openrelayproject"
-            )
-        ]
+        let configuration = makePeerConnectionConfiguration()
 
         let constraints = RTCMediaConstraints(
             mandatoryConstraints: [
@@ -132,12 +123,160 @@ final class WebRTCService: NSObject, ObservableObject {
         }
     }
 
+    func startHostingIfNeeded() {
+        guard signalingService.currentRole == .host,
+              peerConnection == nil else {
+            return
+        }
+
+        state = .preparing
+
+        let configuration = makePeerConnectionConfiguration()
+        let constraints = RTCMediaConstraints(
+            mandatoryConstraints: [
+                "OfferToReceiveAudio": "false",
+                "OfferToReceiveVideo": "false"
+            ],
+            optionalConstraints: nil
+        )
+
+        guard let peerConnection = factory.peerConnection(
+            with: configuration,
+            constraints: constraints,
+            delegate: self
+        ) else {
+            fail("Could not create the host WebRTC peer connection.")
+            return
+        }
+
+        #if os(macOS)
+        let videoSource = factory.videoSource(forScreenCast: true)
+        let videoTrack = factory.videoTrack(
+            with: videoSource,
+            trackId: "blinkcast-screen"
+        )
+        _ = peerConnection.add(videoTrack, streamIds: ["blinkcast-stream"])
+        screenCaptureService = ScreenCaptureService(videoSource: videoSource)
+        localVideoTrack = videoTrack
+
+        Task { @MainActor [weak self] in
+            do {
+                try await self?.screenCaptureService?.start()
+            } catch {
+                self?.fail("Could not start screen capture: \(error.localizedDescription)")
+            }
+        }
+        #endif
+
+        self.peerConnection = peerConnection
+        state = .negotiating
+    }
+
     func stop() {
+        reconnectTask?.cancel()
+        reconnectTask = nil
         peerConnection?.close()
         peerConnection = nil
         pendingRemoteCandidates.removeAll()
+        remoteClientID = nil
         remoteVideoTrack = nil
+        localVideoTrack = nil
+        #if os(macOS)
+        let captureService = screenCaptureService
+        screenCaptureService = nil
+        Task {
+            await captureService?.stop()
+        }
+        #endif
         state = .idle
+    }
+
+    private func scheduleReconnect() {
+        guard reconnectTask == nil,
+              signalingService.state != .disconnected else {
+            return
+        }
+
+        state = .negotiating
+        reconnectTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: .seconds(2))
+            } catch {
+                return
+            }
+
+            guard let self else { return }
+            self.reconnectTask = nil
+            self.resetPeerConnectionForReconnect()
+
+            switch self.signalingService.currentRole {
+            case .viewer:
+                self.startViewerIfNeeded()
+            case .host:
+                self.startHostingIfNeeded()
+            }
+        }
+    }
+
+    private func resetPeerConnectionForReconnect() {
+        peerConnection?.close()
+        peerConnection = nil
+        pendingRemoteCandidates.removeAll()
+        remoteClientID = nil
+        remoteVideoTrack = nil
+        localVideoTrack = nil
+
+        #if os(macOS)
+        let captureService = screenCaptureService
+        screenCaptureService = nil
+        Task {
+            await captureService?.stop()
+        }
+        #endif
+    }
+
+    private func makePeerConnectionConfiguration() -> RTCConfiguration {
+        let configuration = RTCConfiguration()
+        configuration.sdpSemantics = .unifiedPlan
+        let configuredURLs = UserDefaults.standard.string(
+            forKey: "blinkcast.iceServerURLs"
+        )?
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty } ?? []
+
+        if configuredURLs.isEmpty {
+            configuration.iceServers = [
+                RTCIceServer(urlStrings: [
+                    "stun:stun.l.google.com:19302",
+                    "stun:stun1.l.google.com:19302"
+                ]),
+                RTCIceServer(
+                    urlStrings: [
+                        "turn:openrelay.metered.ca:80",
+                        "turn:openrelay.metered.ca:443",
+                        "turn:openrelay.metered.ca:443?transport=tcp"
+                    ],
+                    username: "openrelayproject",
+                    credential: "openrelayproject"
+                )
+            ]
+        } else {
+            let username = UserDefaults.standard.string(
+                forKey: "blinkcast.iceServerUsername"
+            ) ?? ""
+            let credential = UserDefaults.standard.string(
+                forKey: "blinkcast.iceServerCredential"
+            ) ?? ""
+            configuration.iceServers = [
+                RTCIceServer(
+                    urlStrings: configuredURLs,
+                    username: username,
+                    credential: credential
+                )
+            ]
+        }
+        return configuration
     }
 
     private func setLocalDescriptionAndSendOffer(sdp: String) {
@@ -166,20 +305,123 @@ final class WebRTCService: NSObject, ObservableObject {
     }
 
     private func handleSignal(_ data: [String: Any]) {
-        guard signalingService.currentRole == .viewer else { return }
-
         if let target = data["to"] as? String,
            !target.isEmpty,
            target != signalingService.currentClientID {
             return
         }
 
-        if let answer = data["answer"] as? [String: Any] {
-            handleAnswer(answer)
+        switch signalingService.currentRole {
+        case .viewer:
+            if let answer = data["answer"] as? [String: Any] {
+                handleAnswer(answer)
+            }
+
+            if let candidate = data["candidate"] as? [String: Any] {
+                handleRemoteCandidate(candidate)
+            }
+
+        case .host:
+            if let offer = data["offer"] as? [String: Any] {
+                handleOffer(offer, from: data["from"] as? String)
+            }
+
+            if let candidate = data["candidate"] as? [String: Any] {
+                handleRemoteCandidate(candidate)
+            }
+        }
+    }
+
+    private func handleOffer(
+        _ payload: [String: Any],
+        from clientID: String?
+    ) {
+        guard let sdp = payload["sdp"] as? String else { return }
+        startHostingIfNeeded()
+        remoteClientID = clientID
+
+        guard let peerConnection else {
+            fail("Host WebRTC connection is not ready for the viewer offer.")
+            return
         }
 
-        if let candidate = data["candidate"] as? [String: Any] {
-            handleRemoteCandidate(candidate)
+        let description = RTCSessionDescription(type: .offer, sdp: sdp)
+        peerConnection.setRemoteDescription(description) { [weak self] error in
+            let errorMessage = error?.localizedDescription
+            Task { @MainActor in
+                guard let self else { return }
+
+                if let errorMessage {
+                    self.fail("Could not set the viewer offer: \(errorMessage)")
+                    return
+                }
+
+                self.createAndSendAnswer()
+                self.flushPendingCandidates()
+            }
+        }
+    }
+
+    private func createAndSendAnswer() {
+        guard let peerConnection else { return }
+
+        let constraints = RTCMediaConstraints(
+            mandatoryConstraints: [
+                "OfferToReceiveAudio": "false",
+                "OfferToReceiveVideo": "false"
+            ],
+            optionalConstraints: nil
+        )
+
+        peerConnection.answer(for: constraints) { [weak self] description, error in
+            let errorMessage = error?.localizedDescription
+            let sdp = description?.sdp
+            Task { @MainActor in
+                guard let self else { return }
+
+                if let errorMessage {
+                    self.fail("Could not create WebRTC answer: \(errorMessage)")
+                    return
+                }
+
+                guard let sdp else {
+                    self.fail("WebRTC did not return an answer.")
+                    return
+                }
+
+                self.setLocalDescriptionAndSendAnswer(sdp: sdp)
+            }
+        }
+    }
+
+    private func setLocalDescriptionAndSendAnswer(sdp: String) {
+        guard let peerConnection else { return }
+        let description = RTCSessionDescription(type: .answer, sdp: sdp)
+
+        peerConnection.setLocalDescription(description) { [weak self] error in
+            let errorMessage = error?.localizedDescription
+            Task { @MainActor in
+                guard let self else { return }
+
+                if let errorMessage {
+                    self.fail("Could not set local WebRTC answer: \(errorMessage)")
+                    return
+                }
+
+                var answer: [String: Any] = [
+                    "from": self.signalingService.currentClientID,
+                    "answer": [
+                        "type": "answer",
+                        "sdp": sdp
+                    ]
+                ]
+
+                if let remoteClientID = self.remoteClientID {
+                    answer["to"] = remoteClientID
+                }
+
+                self.signalingService.sendSignal(answer)
+            }
         }
     }
 
@@ -282,10 +524,16 @@ final class WebRTCService: NSObject, ObservableObject {
             candidatePayload["sdpMid"] = sdpMid
         }
 
-        signalingService.sendSignal([
+        var signal: [String: Any] = [
             "from": signalingService.currentClientID,
             "candidate": candidatePayload
-        ])
+        ]
+
+        if let remoteClientID {
+            signal["to"] = remoteClientID
+        }
+
+        signalingService.sendSignal(signal)
     }
 
     private func setRemoteTrack(_ track: RTCMediaStreamTrack?) {
@@ -365,6 +613,8 @@ extension WebRTCService: RTCPeerConnectionDelegate {
             switch newState {
             case .connected:
                 self.state = .connected
+            case .connecting, .disconnected:
+                self.scheduleReconnect()
             case .failed:
                 self.fail("WebRTC connection failed.")
             case .closed:

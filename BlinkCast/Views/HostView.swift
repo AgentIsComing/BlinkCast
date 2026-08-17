@@ -1,4 +1,5 @@
 import SwiftUI
+@preconcurrency import WebRTC
 
 struct HostView: View {
     enum SessionType: String, CaseIterable, Identifiable {
@@ -36,6 +37,7 @@ struct HostView: View {
 
     @StateObject private var hostService = HostSessionService.shared
     @StateObject private var signalingService = SignalingService.shared
+    @StateObject private var webRTCService = WebRTCService.shared
 
     @State private var sessionType: SessionType = .screenShare
     @State private var source: ShareSource = .entireScreen
@@ -90,6 +92,7 @@ struct HostView: View {
         .navigationTitle("Host")
         .onChange(of: signalingService.state) { _, _ in
             hostService.updateFromSignaling()
+            webRTCService.signalingDidUpdate()
 
             if hostService.state == .ready {
                 sessionCode = hostService.sessionCode
@@ -541,19 +544,23 @@ struct HostView: View {
             .fill(Color.black)
             .aspectRatio(16 / 9, contentMode: .fit)
 
-            VStack(spacing: 14) {
-                Image(
-                    systemName: "rectangle.inset.filled.and.person.filled"
-                )
-                .font(.system(size: 50))
+            if let track = webRTCService.localVideoTrack {
+                BlinkRemoteVideoView(track: track)
+            } else {
+                VStack(spacing: 14) {
+                    Image(
+                        systemName: "rectangle.inset.filled.and.person.filled"
+                    )
+                    .font(.system(size: 50))
 
-                Text("Live Preview")
-                    .font(.title2.bold())
+                    Text("Preparing Screen Capture")
+                        .font(.title2.bold())
 
-                Text("Screen capture will appear here next.")
-                    .foregroundStyle(.secondary)
+                    Text("Screen Recording permission is required to publish video.")
+                        .foregroundStyle(.secondary)
+                }
+                .foregroundStyle(.white)
             }
-            .foregroundStyle(.white)
         }
         .overlay {
             RoundedRectangle(
@@ -715,6 +722,7 @@ struct HostView: View {
     }
 
     private func endSession() {
+        webRTCService.stop()
         hostService.endSession()
         viewerCount = 0
         sessionCode = "-----"

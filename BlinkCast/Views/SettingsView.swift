@@ -20,6 +20,15 @@ struct SettingsView: View {
     @AppStorage("chatEnabled")
     private var chatEnabled = true
 
+    @AppStorage("blinkcast.iceServerURLs")
+    private var iceServerURLs = ""
+
+    @AppStorage("blinkcast.iceServerUsername")
+    private var iceServerUsername = ""
+
+    @AppStorage("blinkcast.iceServerCredential")
+    private var iceServerCredential = ""
+
     var body: some View {
         ScrollView {
             VStack(
@@ -33,6 +42,8 @@ struct SettingsView: View {
                 sessionsCard
 
                 streamingCard
+
+                networkCard
 
                 accountCard
 
@@ -278,6 +289,43 @@ struct SettingsView: View {
                 .buttonStyle(
                     BlinkSecondaryButtonStyle()
                 )
+            }
+        }
+    }
+
+    private var networkCard: some View {
+        BlinkGlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                BlinkSectionHeader(
+                    title: "Network",
+                    subtitle: "Use your own STUN/TURN service for production sessions."
+                )
+
+                TextField(
+                    "ICE server URLs, comma separated",
+                    text: $iceServerURLs
+                )
+                .textFieldStyle(.roundedBorder)
+
+                TextField(
+                    "TURN username",
+                    text: $iceServerUsername
+                )
+                .textFieldStyle(.roundedBorder)
+
+                SecureField(
+                    "TURN credential",
+                    text: $iceServerCredential
+                )
+                .textFieldStyle(.roundedBorder)
+
+                Text(
+                    iceServerURLs.isEmpty
+                        ? "The built-in public demo servers are currently in use."
+                        : "Custom ICE servers will be used for new connections."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
         }
     }
