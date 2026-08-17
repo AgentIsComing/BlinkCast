@@ -24,27 +24,27 @@ struct HostView: View {
             switch self {
             case .entireScreen:
                 return "rectangle.fill.on.rectangle.fill"
-
             case .monitor:
                 return "display"
-
             case .window:
                 return "macwindow"
-
             case .application:
                 return "square.grid.2x2.fill"
             }
         }
     }
 
-    @State private var sessionType: SessionType =
-        .screenShare
+    @StateObject private var hostService = HostSessionService.shared
+    @StateObject private var signalingService = SignalingService.shared
 
-    @State private var source: ShareSource =
-        .entireScreen
+    @State private var sessionType: SessionType = .screenShare
+    @State private var source: ShareSource = .entireScreen
 
     @State private var roomName = ""
     @State private var roomPassword = ""
+
+    @AppStorage("blinkcast.signalingURL")
+    private var signalingURL = ""
 
     @State private var requireApproval = true
     @State private var allowRemoteControl = false
@@ -78,6 +78,7 @@ struct HostView: View {
                     sessionSecurity
                     advancedSettings
                     createButton
+                    hostStatusView
                 }
             }
             .padding(30)
@@ -87,6 +88,22 @@ struct HostView: View {
             )
         }
         .navigationTitle("Host")
+        .onChange(of: signalingService.state) { _, _ in
+            hostService.updateFromSignaling()
+
+            if hostService.state == .ready {
+                sessionCode = hostService.sessionCode
+
+                withAnimation(
+                    .spring(
+                        response: 0.35,
+                        dampingFraction: 0.84
+                    )
+                ) {
+                    isHosting = true
+                }
+            }
+        }
     }
 
     private var setupHeader: some View {
@@ -134,9 +151,7 @@ struct HostView: View {
                     "Session Type",
                     selection: $sessionType
                 ) {
-                    ForEach(
-                        SessionType.allCases
-                    ) { type in
+                    ForEach(SessionType.allCases) { type in
                         Text(type.rawValue)
                             .tag(type)
                     }
@@ -153,8 +168,7 @@ struct HostView: View {
         ) {
             BlinkSectionHeader(
                 title: "What do you want to share?",
-                subtitle:
-                    "You can change this later while the session is live."
+                subtitle: "You can change this later while the session is live."
             )
 
             LazyVGrid(
@@ -169,18 +183,14 @@ struct HostView: View {
                 ],
                 spacing: 15
             ) {
-                ForEach(
-                    ShareSource.allCases
-                ) { item in
+                ForEach(ShareSource.allCases) { item in
                     sourceButton(item)
                 }
             }
         }
     }
 
-    private func sourceButton(
-        _ item: ShareSource
-    ) -> some View {
+    private func sourceButton(_ item: ShareSource) -> some View {
         Button {
             withAnimation(
                 .spring(
@@ -204,8 +214,7 @@ struct HostView: View {
                     if source == item {
                         BlinkStatusPill(
                             text: "Selected",
-                            systemImage:
-                                "checkmark.circle.fill"
+                            systemImage: "checkmark.circle.fill"
                         )
                     }
                 }
@@ -235,16 +244,12 @@ struct HostView: View {
             alignment: .leading,
             spacing: 14
         ) {
-            BlinkSectionHeader(
-                title: "Media"
-            )
+            BlinkSectionHeader(title: "Media")
 
             LazyVGrid(
                 columns: [
                     GridItem(
-                        .adaptive(
-                            minimum: 220
-                        ),
+                        .adaptive(minimum: 220),
                         spacing: 14
                     )
                 ],
@@ -252,8 +257,7 @@ struct HostView: View {
             ) {
                 mediaToggle(
                     title: "System Audio",
-                    icon:
-                        "speaker.wave.2.fill",
+                    icon: "speaker.wave.2.fill",
                     value: $shareSystemAudio
                 )
 
@@ -289,11 +293,8 @@ struct HostView: View {
 
                 Spacer()
 
-                Toggle(
-                    "",
-                    isOn: value
-                )
-                .labelsHidden()
+                Toggle("", isOn: value)
+                    .labelsHidden()
             }
         }
     }
@@ -306,9 +307,22 @@ struct HostView: View {
             ) {
                 BlinkSectionHeader(
                     title: "Session Access",
-                    subtitle:
-                        "Control who can join and what they're allowed to do."
+                    subtitle: "Control who can join and how this Apple device reaches BlinkCast signaling."
                 )
+
+                TextField(
+                    "Signaling URL (wss://.../signal)",
+                    text: $signalingURL
+                )
+                .textFieldStyle(.roundedBorder)
+
+                Text(
+                    "Use the public signaling URL for the BlinkCast backend. The URL is saved on this device."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+                Divider()
 
                 TextField(
                     "Room name (optional)",
@@ -317,10 +331,16 @@ struct HostView: View {
                 .textFieldStyle(.roundedBorder)
 
                 SecureField(
-                    "Password (optional)",
+                    "Room password (optional, 4+ characters)",
                     text: $roomPassword
                 )
                 .textFieldStyle(.roundedBorder)
+
+                Text(
+                    "A 5-digit join code is always created. Room name + password are published too when both are provided."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
                 Divider()
 
@@ -339,44 +359,22 @@ struct HostView: View {
 
     private var advancedSettings: some View {
         BlinkGlassCard {
-            DisclosureGroup(
-                isExpanded: $showAdvanced
-            ) {
+            DisclosureGroup(isExpanded: $showAdvanced) {
                 VStack(spacing: 14) {
                     Divider()
                         .padding(.vertical, 4)
 
-                    settingRow(
-                        "Resolution",
-                        "Adaptive"
-                    )
-
-                    settingRow(
-                        "Frame Rate",
-                        "Adaptive"
-                    )
-
-                    settingRow(
-                        "Bitrate",
-                        "Adaptive"
-                    )
-
-                    settingRow(
-                        "Latency Mode",
-                        "Balanced"
-                    )
-
-                    settingRow(
-                        "Encryption",
-                        "Enabled"
-                    )
+                    settingRow("Resolution", "Adaptive")
+                    settingRow("Frame Rate", "Adaptive")
+                    settingRow("Bitrate", "Adaptive")
+                    settingRow("Latency Mode", "Balanced")
+                    settingRow("Encryption", "Enabled")
                 }
                 .padding(.top, 10)
             } label: {
                 HStack {
                     BlinkIconBadge(
-                        systemImage:
-                            "slider.horizontal.3",
+                        systemImage: "slider.horizontal.3",
                         size: 44
                     )
 
@@ -387,11 +385,9 @@ struct HostView: View {
                         Text("Advanced")
                             .font(.headline)
 
-                        Text(
-                            "Streaming and connection controls"
-                        )
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        Text("Streaming and connection controls")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -404,9 +400,7 @@ struct HostView: View {
     ) -> some View {
         HStack {
             Text(title)
-
             Spacer()
-
             Text(value)
                 .foregroundStyle(.secondary)
         }
@@ -414,18 +408,98 @@ struct HostView: View {
 
     private var createButton: some View {
         Button {
-            startSession()
+            Task {
+                await startSession()
+            }
         } label: {
             Label(
-                "Start BlinkCast Session",
-                systemImage:
-                    "dot.radiowaves.left.and.right"
+                startButtonText,
+                systemImage: "dot.radiowaves.left.and.right"
             )
         }
-        .buttonStyle(
-            BlinkPrimaryButtonStyle()
-        )
+        .buttonStyle(BlinkPrimaryButtonStyle())
         .frame(maxWidth: 520)
+        .disabled(
+            signalingURL.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            ).isEmpty || isStarting
+        )
+        .opacity(
+            signalingURL.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            ).isEmpty ? 0.55 : 1
+        )
+    }
+
+    @ViewBuilder
+    private var hostStatusView: some View {
+        switch hostService.state {
+        case .idle:
+            EmptyView()
+
+        case .publishing:
+            hostStatusRow(
+                text: "Publishing join code...",
+                icon: "number.circle.fill",
+                tint: .orange
+            )
+
+        case .connecting:
+            hostStatusRow(
+                text: "Connecting host to signaling...",
+                icon: "antenna.radiowaves.left.and.right",
+                tint: .orange
+            )
+
+        case .ready:
+            hostStatusRow(
+                text: "Host signaling is ready",
+                icon: "checkmark.circle.fill",
+                tint: .green
+            )
+
+        case .failed(let message):
+            hostStatusRow(
+                text: message,
+                icon: "exclamationmark.triangle.fill",
+                tint: .red
+            )
+        }
+    }
+
+    private func hostStatusRow(
+        text: String,
+        icon: String,
+        tint: Color
+    ) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .foregroundStyle(tint)
+
+            Text(text)
+                .font(.caption)
+                .foregroundStyle(tint)
+        }
+    }
+
+    private var startButtonText: String {
+        switch hostService.state {
+        case .publishing:
+            return "Publishing Session..."
+        case .connecting:
+            return "Connecting..."
+        default:
+            return "Start BlinkCast Session"
+        }
+    }
+
+    private var isStarting: Bool {
+        switch hostService.state {
+        case .publishing, .connecting:
+            return true
+        default:
+            return false
+        }
     }
 
     private var liveHeader: some View {
@@ -443,19 +517,16 @@ struct HostView: View {
                         )
                     )
 
-                Text(
-                    "Your screen is ready for viewers."
-                )
-                .font(.title3)
-                .foregroundStyle(.secondary)
+                Text("Your signaling session is ready for viewers.")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
 
             BlinkStatusPill(
                 text: "Live",
-                systemImage:
-                    "dot.radiowaves.left.and.right",
+                systemImage: "dot.radiowaves.left.and.right",
                 tint: .green
             )
         }
@@ -468,25 +539,19 @@ struct HostView: View {
                 style: .continuous
             )
             .fill(Color.black)
-            .aspectRatio(
-                16 / 9,
-                contentMode: .fit
-            )
+            .aspectRatio(16 / 9, contentMode: .fit)
 
             VStack(spacing: 14) {
                 Image(
-                    systemName:
-                        "rectangle.inset.filled.and.person.filled"
+                    systemName: "rectangle.inset.filled.and.person.filled"
                 )
                 .font(.system(size: 50))
 
                 Text("Live Preview")
                     .font(.title2.bold())
 
-                Text(
-                    "Screen capture will appear here."
-                )
-                .foregroundStyle(.secondary)
+                Text("Screen capture will appear here next.")
+                    .foregroundStyle(.secondary)
             }
             .foregroundStyle(.white)
         }
@@ -511,9 +576,7 @@ struct HostView: View {
         LazyVGrid(
             columns: [
                 GridItem(
-                    .adaptive(
-                        minimum: 130
-                    ),
+                    .adaptive(minimum: 130),
                     spacing: 12
                 )
             ],
@@ -523,21 +586,17 @@ struct HostView: View {
                 title: "Audio",
                 icon: "speaker.wave.2.fill"
             )
-
             controlButton(
                 title: "Mic",
                 icon: "mic.fill"
             )
-
             controlButton(
                 title: "Camera",
                 icon: "video.fill"
             )
-
             controlButton(
                 title: "Source",
-                icon:
-                    "rectangle.on.rectangle"
+                icon: "rectangle.on.rectangle"
             )
         }
     }
@@ -547,18 +606,11 @@ struct HostView: View {
         icon: String
     ) -> some View {
         Button {
-            handleLiveControl(
-                title: title
-            )
+            handleLiveControl(title: title)
         } label: {
-            Label(
-                title,
-                systemImage: icon
-            )
+            Label(title, systemImage: icon)
         }
-        .buttonStyle(
-            BlinkSecondaryButtonStyle()
-        )
+        .buttonStyle(BlinkSecondaryButtonStyle())
     }
 
     private var liveInformation: some View {
@@ -603,18 +655,11 @@ struct HostView: View {
                 VStack(spacing: 14) {
                     HStack {
                         BlinkStatusPill(
-                            text:
-                                viewerCount > 0
-                                ? "Connected"
-                                : "Waiting",
-                            systemImage:
-                                viewerCount > 0
+                            text: viewerCount > 0 ? "Connected" : "Waiting",
+                            systemImage: viewerCount > 0
                                 ? "checkmark.circle.fill"
                                 : "clock.fill",
-                            tint:
-                                viewerCount > 0
-                                ? .green
-                                : .orange
+                            tint: viewerCount > 0 ? .green : .orange
                         )
 
                         Spacer()
@@ -625,25 +670,12 @@ struct HostView: View {
 
                     Divider()
 
-                    settingRow(
-                        "Latency",
-                        "-- ms"
-                    )
-
-                    settingRow(
-                        "Resolution",
-                        "Adaptive"
-                    )
-
-                    settingRow(
-                        "FPS",
-                        "Adaptive"
-                    )
-
-                    settingRow(
-                        "Bitrate",
-                        "Adaptive"
-                    )
+                    settingRow("Signaling", "Connected")
+                    settingRow("Room", hostService.activeRoomID)
+                    settingRow("Latency", "-- ms")
+                    settingRow("Resolution", "Adaptive")
+                    settingRow("FPS", "Adaptive")
+                    settingRow("Bitrate", "Adaptive")
                 }
             }
 
@@ -652,39 +684,38 @@ struct HostView: View {
             } label: {
                 Label(
                     "End Session",
-                    systemImage:
-                        "stop.circle.fill"
+                    systemImage: "stop.circle.fill"
                 )
             }
-            .buttonStyle(
-                BlinkPrimaryButtonStyle()
-            )
+            .buttonStyle(BlinkPrimaryButtonStyle())
             .tint(.red)
             .frame(maxWidth: 420)
         }
     }
 
-    private func startSession() {
-        sessionCode =
-            String(
-                Int.random(
-                    in: 10000...99999
-                )
-            )
-
+    private func startSession() async {
         viewerCount = 0
+        sessionCode = "-----"
 
-        withAnimation(
-            .spring(
-                response: 0.35,
-                dampingFraction: 0.84
-            )
-        ) {
-            isHosting = true
+        signalingService.onViewerJoined = {
+            viewerCount += 1
         }
+
+        let started = await hostService.startSession(
+            signalURL: signalingURL,
+            requestedRoomID: roomName,
+            password: roomPassword
+        )
+
+        if !started {
+            return
+        }
+
+        sessionCode = hostService.sessionCode
     }
 
     private func endSession() {
+        hostService.endSession()
         viewerCount = 0
         sessionCode = "-----"
 
@@ -693,19 +724,14 @@ struct HostView: View {
         }
     }
 
-    private func handleLiveControl(
-        title: String
-    ) {
+    private func handleLiveControl(title: String) {
         switch title {
         case "Audio":
             shareSystemAudio.toggle()
-
         case "Mic":
             shareMicrophone.toggle()
-
         case "Camera":
             shareCamera.toggle()
-
         default:
             break
         }
