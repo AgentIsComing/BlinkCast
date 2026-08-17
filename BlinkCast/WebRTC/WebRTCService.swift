@@ -4,6 +4,7 @@ import SwiftUI
 
 #if os(macOS)
 import AppKit
+import CoreImage
 #else
 import UIKit
 #endif
@@ -24,7 +25,6 @@ final class WebRTCService: NSObject, ObservableObject {
     @Published private(set) var remoteVideoTrack: RTCVideoTrack?
 
     private let signalingService = SignalingService.shared
-
     private let factory: RTCPeerConnectionFactory
     private var peerConnection: RTCPeerConnection?
     private var pendingRemoteCandidates: [RTCIceCandidate] = []
@@ -53,27 +53,20 @@ final class WebRTCService: NSObject, ObservableObject {
             if signalingService.hostAvailable {
                 startViewerIfNeeded()
             }
-
         case .waitingForHost:
             break
-
         case .disconnected:
             stop()
-
         case .failed(let message):
             fail(message)
-
         default:
             break
         }
     }
 
     func startViewerIfNeeded() {
-        guard peerConnection == nil else {
-            return
-        }
-
-        guard signalingService.hostAvailable else {
+        guard peerConnection == nil,
+              signalingService.hostAvailable else {
             return
         }
 
@@ -119,9 +112,7 @@ final class WebRTCService: NSObject, ObservableObject {
 
         peerConnection.offer(for: constraints) { [weak self] description, error in
             Task { @MainActor in
-                guard let self else {
-                    return
-                }
+                guard let self else { return }
 
                 if let error {
                     self.fail("Could not create WebRTC offer: \(error.localizedDescription)")
@@ -149,15 +140,11 @@ final class WebRTCService: NSObject, ObservableObject {
     private func setLocalDescriptionAndSendOffer(
         _ description: RTCSessionDescription
     ) {
-        guard let peerConnection else {
-            return
-        }
+        guard let peerConnection else { return }
 
         peerConnection.setLocalDescription(description) { [weak self] error in
             Task { @MainActor in
-                guard let self else {
-                    return
-                }
+                guard let self else { return }
 
                 if let error {
                     self.fail("Could not set local WebRTC description: \(error.localizedDescription)")
@@ -176,9 +163,7 @@ final class WebRTCService: NSObject, ObservableObject {
     }
 
     private func handleSignal(_ data: [String: Any]) {
-        guard signalingService.currentRole == .viewer else {
-            return
-        }
+        guard signalingService.currentRole == .viewer else { return }
 
         if let target = data["to"] as? String,
            !target.isEmpty,
@@ -196,23 +181,16 @@ final class WebRTCService: NSObject, ObservableObject {
     }
 
     private func handleAnswer(_ payload: [String: Any]) {
-        guard
-            let peerConnection,
-            let sdp = payload["sdp"] as? String
-        else {
+        guard let peerConnection,
+              let sdp = payload["sdp"] as? String else {
             return
         }
 
-        let description = RTCSessionDescription(
-            type: .answer,
-            sdp: sdp
-        )
+        let description = RTCSessionDescription(type: .answer, sdp: sdp)
 
         peerConnection.setRemoteDescription(description) { [weak self] error in
             Task { @MainActor in
-                guard let self else {
-                    return
-                }
+                guard let self else { return }
 
                 if let error {
                     self.fail("Could not set remote WebRTC description: \(error.localizedDescription)")
@@ -230,8 +208,8 @@ final class WebRTCService: NSObject, ObservableObject {
         }
 
         let sdpMid = payload["sdpMid"] as? String
-
         let lineIndex: Int32
+
         if let number = payload["sdpMLineIndex"] as? NSNumber {
             lineIndex = number.int32Value
         } else if let intValue = payload["sdpMLineIndex"] as? Int {
@@ -257,10 +235,7 @@ final class WebRTCService: NSObject, ObservableObject {
         }
 
         peerConnection.add(candidate) { [weak self] error in
-            guard let error else {
-                return
-            }
-
+            guard let error else { return }
             Task { @MainActor in
                 self?.fail("Could not add ICE candidate: \(error.localizedDescription)")
             }
@@ -279,10 +254,7 @@ final class WebRTCService: NSObject, ObservableObject {
 
         for candidate in candidates {
             peerConnection.add(candidate) { [weak self] error in
-                guard let error else {
-                    return
-                }
-
+                guard let error else { return }
                 Task { @MainActor in
                     self?.fail("Could not add queued ICE candidate: \(error.localizedDescription)")
                 }
@@ -307,10 +279,7 @@ final class WebRTCService: NSObject, ObservableObject {
     }
 
     private func setRemoteTrack(_ track: RTCMediaStreamTrack?) {
-        guard let videoTrack = track as? RTCVideoTrack else {
-            return
-        }
-
+        guard let videoTrack = track as? RTCVideoTrack else { return }
         remoteVideoTrack = videoTrack
     }
 
@@ -330,9 +299,7 @@ extension WebRTCService: RTCPeerConnectionDelegate {
         didAdd stream: RTCMediaStream
     ) {
         let track = stream.videoTracks.first
-        Task { @MainActor in
-            self.setRemoteTrack(track)
-        }
+        Task { @MainActor in self.setRemoteTrack(track) }
     }
 
     nonisolated func peerConnection(
@@ -358,9 +325,7 @@ extension WebRTCService: RTCPeerConnectionDelegate {
         _ peerConnection: RTCPeerConnection,
         didGenerate candidate: RTCIceCandidate
     ) {
-        Task { @MainActor in
-            self.sendLocalCandidate(candidate)
-        }
+        Task { @MainActor in self.sendLocalCandidate(candidate) }
     }
 
     nonisolated func peerConnection(
@@ -381,15 +346,12 @@ extension WebRTCService: RTCPeerConnectionDelegate {
             switch newState {
             case .connected:
                 self.state = .connected
-
             case .failed:
                 self.fail("WebRTC connection failed.")
-
             case .closed:
                 if self.state != .idle {
                     self.state = .idle
                 }
-
             default:
                 break
             }
@@ -401,9 +363,7 @@ extension WebRTCService: RTCPeerConnectionDelegate {
         didStartReceivingOn transceiver: RTCRtpTransceiver
     ) {
         let track = transceiver.receiver.track
-        Task { @MainActor in
-            self.setRemoteTrack(track)
-        }
+        Task { @MainActor in self.setRemoteTrack(track) }
     }
 
     nonisolated func peerConnection(
@@ -412,13 +372,55 @@ extension WebRTCService: RTCPeerConnectionDelegate {
         streams: [RTCMediaStream]
     ) {
         let track = rtpReceiver.track
-        Task { @MainActor in
-            self.setRemoteTrack(track)
-        }
+        Task { @MainActor in self.setRemoteTrack(track) }
     }
 }
 
 #if os(macOS)
+final class BlinkMacRTCVideoView: NSView, RTCVideoRenderer {
+    private let ciContext = CIContext(options: nil)
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.black.cgColor
+        layer?.contentsGravity = .resizeAspect
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.black.cgColor
+        layer?.contentsGravity = .resizeAspect
+    }
+
+    func setSize(_ size: CGSize) {}
+
+    func renderFrame(_ frame: RTCVideoFrame?) {
+        guard let frame,
+              let rtcBuffer = frame.buffer as? RTCCVPixelBuffer else {
+            return
+        }
+
+        let pixelBuffer = rtcBuffer.pixelBuffer
+        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+        let rect = CGRect(
+            x: 0,
+            y: 0,
+            width: CVPixelBufferGetWidth(pixelBuffer),
+            height: CVPixelBufferGetHeight(pixelBuffer)
+        )
+
+        guard let cgImage = ciContext.createCGImage(ciImage, from: rect) else {
+            return
+        }
+
+        DispatchQueue.main.async { [weak self] in
+            self?.layer?.contents = cgImage
+        }
+    }
+}
+
 struct BlinkRemoteVideoView: NSViewRepresentable {
     let track: RTCVideoTrack
 
@@ -430,14 +432,12 @@ struct BlinkRemoteVideoView: NSViewRepresentable {
         Coordinator()
     }
 
-    func makeNSView(context: Context) -> RTCMTLVideoView {
-        let view = RTCMTLVideoView(frame: .zero)
-        view.videoContentMode = .scaleAspectFit
-        return view
+    func makeNSView(context: Context) -> BlinkMacRTCVideoView {
+        BlinkMacRTCVideoView(frame: .zero)
     }
 
     func updateNSView(
-        _ view: RTCMTLVideoView,
+        _ view: BlinkMacRTCVideoView,
         context: Context
     ) {
         if context.coordinator.attachedTrack !== track {
@@ -448,7 +448,7 @@ struct BlinkRemoteVideoView: NSViewRepresentable {
     }
 
     static func dismantleNSView(
-        _ view: RTCMTLVideoView,
+        _ view: BlinkMacRTCVideoView,
         coordinator: Coordinator
     ) {
         coordinator.attachedTrack?.remove(view)
