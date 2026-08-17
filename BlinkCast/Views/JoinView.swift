@@ -1,4 +1,5 @@
 import SwiftUI
+@preconcurrency import WebRTC
 
 struct JoinView: View {
     enum JoinMethod: String, CaseIterable, Identifiable {
@@ -236,7 +237,7 @@ struct JoinView: View {
         }
     }
 
-    private func videoCard(track: WebRTC.RTCVideoTrack) -> some View {
+    private func videoCard(track: RTCVideoTrack) -> some View {
         VStack(spacing: 18) {
             ZStack {
                 RoundedRectangle(
