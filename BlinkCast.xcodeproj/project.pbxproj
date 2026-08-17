@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A1B2C3D4E5F6012345678901 /* WebRTC in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F6012345678903 /* WebRTC */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		69C8FC6D302E0F7700E97053 /* BlinkCast.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BlinkCast.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1B2C3D4E5F6012345678901 /* WebRTC in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = BlinkCast;
 			packageProductDependencies = (
+				A1B2C3D4E5F6012345678903 /* WebRTC */,
 			);
 			productName = BlinkCast;
 			productReference = 69C8FC6D302E0F7700E97053 /* BlinkCast.app */;
@@ -94,6 +100,9 @@
 			);
 			mainGroup = 69C8FC64302E0F7700E97053;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				A1B2C3D4E5F6012345678902 /* XCRemoteSwiftPackageReference "WebRTC" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 69C8FC6E302E0F7700E97053 /* Products */;
 			projectDirPath = "";
@@ -371,6 +380,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A1B2C3D4E5F6012345678902 /* XCRemoteSwiftPackageReference "WebRTC" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/stasel/WebRTC.git";
+			requirement = {
+				branch = latest;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A1B2C3D4E5F6012345678903 /* WebRTC */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A1B2C3D4E5F6012345678902 /* XCRemoteSwiftPackageReference "WebRTC" */;
+			productName = WebRTC;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 69C8FC65302E0F7700E97053 /* Project object */;
 }
