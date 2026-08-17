@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Combine
 @preconcurrency import WebRTC
 
 #if os(macOS)
@@ -111,20 +112,22 @@ final class WebRTCService: NSObject, ObservableObject {
         state = .negotiating
 
         peerConnection.offer(for: constraints) { [weak self] description, error in
+            let errorMessage = error?.localizedDescription
+            let sdp = description?.sdp
             Task { @MainActor in
                 guard let self else { return }
 
-                if let error {
-                    self.fail("Could not create WebRTC offer: \(error.localizedDescription)")
+                if let errorMessage {
+                    self.fail("Could not create WebRTC offer: \(errorMessage)")
                     return
                 }
 
-                guard let description else {
+                guard let sdp else {
                     self.fail("WebRTC did not return an offer.")
                     return
                 }
 
-                self.setLocalDescriptionAndSendOffer(description)
+                self.setLocalDescriptionAndSendOffer(sdp: sdp)
             }
         }
     }
@@ -137,17 +140,17 @@ final class WebRTCService: NSObject, ObservableObject {
         state = .idle
     }
 
-    private func setLocalDescriptionAndSendOffer(
-        _ description: RTCSessionDescription
-    ) {
+    private func setLocalDescriptionAndSendOffer(sdp: String) {
         guard let peerConnection else { return }
 
+        let description = RTCSessionDescription(type: .offer, sdp: sdp)
         peerConnection.setLocalDescription(description) { [weak self] error in
+            let errorMessage = error?.localizedDescription
             Task { @MainActor in
                 guard let self else { return }
 
-                if let error {
-                    self.fail("Could not set local WebRTC description: \(error.localizedDescription)")
+                if let errorMessage {
+                    self.fail("Could not set local WebRTC description: \(errorMessage)")
                     return
                 }
 
@@ -189,11 +192,12 @@ final class WebRTCService: NSObject, ObservableObject {
         let description = RTCSessionDescription(type: .answer, sdp: sdp)
 
         peerConnection.setRemoteDescription(description) { [weak self] error in
+            let errorMessage = error?.localizedDescription
             Task { @MainActor in
                 guard let self else { return }
 
-                if let error {
-                    self.fail("Could not set remote WebRTC description: \(error.localizedDescription)")
+                if let errorMessage {
+                    self.fail("Could not set remote WebRTC description: \(errorMessage)")
                     return
                 }
 
@@ -235,9 +239,10 @@ final class WebRTCService: NSObject, ObservableObject {
         }
 
         peerConnection.add(candidate) { [weak self] error in
-            guard let error else { return }
+            let errorMessage = error?.localizedDescription
+            guard let errorMessage else { return }
             Task { @MainActor in
-                self?.fail("Could not add ICE candidate: \(error.localizedDescription)")
+                self?.fail("Could not add ICE candidate: \(errorMessage)")
             }
         }
     }
@@ -254,21 +259,26 @@ final class WebRTCService: NSObject, ObservableObject {
 
         for candidate in candidates {
             peerConnection.add(candidate) { [weak self] error in
-                guard let error else { return }
+                let errorMessage = error?.localizedDescription
+                guard let errorMessage else { return }
                 Task { @MainActor in
-                    self?.fail("Could not add queued ICE candidate: \(error.localizedDescription)")
+                    self?.fail("Could not add queued ICE candidate: \(errorMessage)")
                 }
             }
         }
     }
 
-    private func sendLocalCandidate(_ candidate: RTCIceCandidate) {
+    private func sendLocalCandidate(
+        sdp: String,
+        sdpMLineIndex: Int32,
+        sdpMid: String?
+    ) {
         var candidatePayload: [String: Any] = [
-            "candidate": candidate.sdp,
-            "sdpMLineIndex": Int(candidate.sdpMLineIndex)
+            "candidate": sdp,
+            "sdpMLineIndex": Int(sdpMLineIndex)
         ]
 
-        if let sdpMid = candidate.sdpMid {
+        if let sdpMid {
             candidatePayload["sdpMid"] = sdpMid
         }
 
@@ -325,7 +335,16 @@ extension WebRTCService: RTCPeerConnectionDelegate {
         _ peerConnection: RTCPeerConnection,
         didGenerate candidate: RTCIceCandidate
     ) {
-        Task { @MainActor in self.sendLocalCandidate(candidate) }
+        let sdp = candidate.sdp
+        let sdpMLineIndex = candidate.sdpMLineIndex
+        let sdpMid = candidate.sdpMid
+        Task { @MainActor in
+            self.sendLocalCandidate(
+                sdp: sdp,
+                sdpMLineIndex: sdpMLineIndex,
+                sdpMid: sdpMid
+            )
+        }
     }
 
     nonisolated func peerConnection(
