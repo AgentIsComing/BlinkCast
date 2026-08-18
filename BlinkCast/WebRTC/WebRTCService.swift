@@ -178,6 +178,8 @@ final class WebRTCService: NSObject, ObservableObject {
             return
         }
 
+        self.peerConnection = peerConnection
+
         #if os(macOS)
         let videoSource = factory.videoSource(forScreenCast: true)
         let videoTrack = factory.videoTrack(
@@ -217,7 +219,6 @@ final class WebRTCService: NSObject, ObservableObject {
         }
         #endif
 
-        self.peerConnection = peerConnection
         state = .negotiating
     }
 
