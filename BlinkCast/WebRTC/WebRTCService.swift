@@ -54,6 +54,7 @@ final class WebRTCService: NSObject, ObservableObject {
     private let factory: RTCPeerConnectionFactory
     private var peerConnection: RTCPeerConnection?
     private var pendingRemoteCandidates: [RTCIceCandidate] = []
+    private var pendingLocalCandidates: [[String: Any]] = []
     private var remoteClientID: String?
     private var reconnectTask: Task<Void, Never>?
     private var publishMicrophone = false
@@ -271,6 +272,7 @@ final class WebRTCService: NSObject, ObservableObject {
         peerConnection?.close()
         peerConnection = nil
         pendingRemoteCandidates.removeAll()
+        pendingLocalCandidates.removeAll()
         remoteClientID = nil
         remoteVideoTrack = nil
         localVideoTrack = nil
@@ -327,6 +329,7 @@ final class WebRTCService: NSObject, ObservableObject {
         peerConnection?.close()
         peerConnection = nil
         pendingRemoteCandidates.removeAll()
+        pendingLocalCandidates.removeAll()
         remoteClientID = nil
         remoteVideoTrack = nil
         localVideoTrack = nil
@@ -478,6 +481,7 @@ final class WebRTCService: NSObject, ObservableObject {
         guard let sdp = payload["sdp"] as? String else { return }
         startHostingIfNeeded()
         remoteClientID = clientID
+        flushPendingLocalCandidates()
 
         guard let peerConnection else {
             fail("Host WebRTC connection is not ready for the viewer offer.")
@@ -670,9 +674,23 @@ final class WebRTCService: NSObject, ObservableObject {
 
         if let remoteClientID {
             signal["to"] = remoteClientID
+        } else if signalingService.currentRole == .host {
+            pendingLocalCandidates.append(signal)
+            return
         }
 
         signalingService.sendSignal(signal)
+    }
+
+    private func flushPendingLocalCandidates() {
+        guard remoteClientID != nil else { return }
+        let candidates = pendingLocalCandidates
+        pendingLocalCandidates.removeAll()
+        for candidate in candidates {
+            var targetedCandidate = candidate
+            targetedCandidate["to"] = remoteClientID
+            signalingService.sendSignal(targetedCandidate)
+        }
     }
 
     private func setRemoteTrack(_ track: RTCMediaStreamTrack?) {
