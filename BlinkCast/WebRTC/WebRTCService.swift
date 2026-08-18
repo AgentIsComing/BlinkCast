@@ -516,10 +516,7 @@ final class WebRTCService: NSObject, ObservableObject {
         guard let peerConnection else { return }
 
         let constraints = RTCMediaConstraints(
-            mandatoryConstraints: [
-                "OfferToReceiveAudio": "false",
-                "OfferToReceiveVideo": "false"
-            ],
+            mandatoryConstraints: [:],
             optionalConstraints: nil
         )
 
