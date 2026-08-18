@@ -190,12 +190,18 @@ final class SignalingService: NSObject, ObservableObject {
             switch result {
             case .success(let message):
                 Task { @MainActor in
+                    guard self.webSocketTask === webSocketTask else {
+                        return
+                    }
                     self.handle(message)
                     self.receiveNextMessage()
                 }
 
             case .failure(let error):
                 Task { @MainActor in
+                    guard self.webSocketTask === webSocketTask else {
+                        return
+                    }
                     self.handleTransportFailure(error)
                 }
             }
@@ -360,6 +366,9 @@ extension SignalingService: URLSessionWebSocketDelegate {
         didOpenWithProtocol protocol: String?
     ) {
         Task { @MainActor in
+            guard self.webSocketTask === webSocketTask else {
+                return
+            }
             self.reconnectTask?.cancel()
             self.reconnectTask = nil
             self.reconnectAttempt = 0
@@ -375,6 +384,9 @@ extension SignalingService: URLSessionWebSocketDelegate {
         reason: Data?
     ) {
         Task { @MainActor in
+            guard self.webSocketTask === webSocketTask else {
+                return
+            }
             guard self.shouldReconnect else {
                 self.state = .disconnected
                 return
