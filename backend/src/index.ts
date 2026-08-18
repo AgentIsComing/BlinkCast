@@ -314,7 +314,13 @@ export class Room {
         : sender.role === "viewer"
           ? this.findRole("host")
           : null;
-      if (destination) destination.send(JSON.stringify({ type: "signal", data }));
+      if (destination) {
+        try {
+          destination.send(JSON.stringify({ type: "signal", data }));
+        } catch {
+          try { destination.close(1011, "Peer socket unavailable"); } catch { /* already closed */ }
+        }
+      }
     }
   }
 
