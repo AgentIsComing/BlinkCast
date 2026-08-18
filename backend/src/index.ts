@@ -311,7 +311,9 @@ export class Room {
       if (data.from !== sender.clientId) return;
       const destination = target
         ? this.findClient(target)
-        : null;
+        : sender.role === "viewer"
+          ? this.findRole("host")
+          : null;
       if (destination) destination.send(JSON.stringify({ type: "signal", data }));
     }
   }
