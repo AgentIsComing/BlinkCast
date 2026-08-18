@@ -25,6 +25,10 @@ final class WebRTCService: NSObject, ObservableObject {
     @Published private(set) var state: State = .idle
     @Published private(set) var remoteVideoTrack: RTCVideoTrack?
     @Published private(set) var localVideoTrack: RTCVideoTrack?
+    @Published private(set) var localAudioTrack: RTCAudioTrack?
+    @Published private(set) var peerConnectionState = "new"
+    @Published private(set) var iceConnectionState = "new"
+    @Published private(set) var lastError: String?
 
     private let signalingService = SignalingService.shared
     private let factory: RTCPeerConnectionFactory
@@ -32,8 +36,10 @@ final class WebRTCService: NSObject, ObservableObject {
     private var pendingRemoteCandidates: [RTCIceCandidate] = []
     private var remoteClientID: String?
     private var reconnectTask: Task<Void, Never>?
+    private var publishMicrophone = false
     #if os(macOS)
     private var screenCaptureService: ScreenCaptureService?
+    private var captureSource: ScreenCaptureService.Source = .entireScreen
     #endif
 
     private override init() {
@@ -84,7 +90,9 @@ final class WebRTCService: NSObject, ObservableObject {
 
         let constraints = RTCMediaConstraints(
             mandatoryConstraints: [
-                "OfferToReceiveAudio": "false",
+                "OfferToReceiveAudio": UserDefaults.standard.bool(
+                    forKey: "blinkcast.receiveAudio"
+                ) ? "true" : "false",
                 "OfferToReceiveVideo": "true"
             ],
             optionalConstraints: nil
@@ -159,9 +167,24 @@ final class WebRTCService: NSObject, ObservableObject {
         screenCaptureService = ScreenCaptureService(videoSource: videoSource)
         localVideoTrack = videoTrack
 
+        if publishMicrophone {
+            let audioSource = factory.audioSource(with: nil)
+            let audioTrack = factory.audioTrack(
+                with: audioSource,
+                trackId: "blinkcast-microphone"
+            )
+            _ = peerConnection.add(
+                audioTrack,
+                streamIds: ["blinkcast-stream"]
+            )
+            localAudioTrack = audioTrack
+        }
+
         Task { @MainActor [weak self] in
             do {
-                try await self?.screenCaptureService?.start()
+                try await self?.screenCaptureService?.start(
+                    source: self?.captureSource ?? .entireScreen
+                )
             } catch {
                 self?.fail("Could not start screen capture: \(error.localizedDescription)")
             }
@@ -170,6 +193,16 @@ final class WebRTCService: NSObject, ObservableObject {
 
         self.peerConnection = peerConnection
         state = .negotiating
+    }
+
+    #if os(macOS)
+    func setCaptureSource(_ source: ScreenCaptureService.Source) {
+        captureSource = source
+    }
+    #endif
+
+    func setMediaOptions(publishMicrophone: Bool) {
+        self.publishMicrophone = publishMicrophone
     }
 
     func stop() {
@@ -181,6 +214,10 @@ final class WebRTCService: NSObject, ObservableObject {
         remoteClientID = nil
         remoteVideoTrack = nil
         localVideoTrack = nil
+        localAudioTrack = nil
+        peerConnectionState = "closed"
+        iceConnectionState = "closed"
+        lastError = nil
         #if os(macOS)
         let captureService = screenCaptureService
         screenCaptureService = nil
@@ -542,6 +579,7 @@ final class WebRTCService: NSObject, ObservableObject {
     }
 
     private func fail(_ message: String) {
+        lastError = message
         state = .failed(message)
     }
 }
@@ -572,7 +610,12 @@ extension WebRTCService: RTCPeerConnectionDelegate {
     nonisolated func peerConnection(
         _ peerConnection: RTCPeerConnection,
         didChange newState: RTCIceConnectionState
-    ) {}
+    ) {
+        let state = String(describing: newState)
+        Task { @MainActor in
+            self.iceConnectionState = state
+        }
+    }
 
     nonisolated func peerConnection(
         _ peerConnection: RTCPeerConnection,
@@ -609,7 +652,9 @@ extension WebRTCService: RTCPeerConnectionDelegate {
         _ peerConnection: RTCPeerConnection,
         didChange newState: RTCPeerConnectionState
     ) {
+        let state = String(describing: newState)
         Task { @MainActor in
+            self.peerConnectionState = state
             switch newState {
             case .connected:
                 self.state = .connected

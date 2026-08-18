@@ -202,6 +202,11 @@ struct HostView: View {
                 )
             ) {
                 source = item
+                #if os(macOS)
+                webRTCService.setCaptureSource(
+                    captureSource(for: item)
+                )
+                #endif
             }
         } label: {
             BlinkGlassCard {
@@ -408,6 +413,23 @@ struct HostView: View {
                 .foregroundStyle(.secondary)
         }
     }
+
+    #if os(macOS)
+    private func captureSource(
+        for source: ShareSource
+    ) -> ScreenCaptureService.Source {
+        switch source {
+        case .entireScreen:
+            return .entireScreen
+        case .monitor:
+            return .monitor
+        case .window:
+            return .window
+        case .application:
+            return .application
+        }
+    }
+    #endif
 
     private var createButton: some View {
         Button {
@@ -678,6 +700,8 @@ struct HostView: View {
                     Divider()
 
                     settingRow("Signaling", "Connected")
+                    settingRow("WebRTC", webRTCService.peerConnectionState)
+                    settingRow("ICE", webRTCService.iceConnectionState)
                     settingRow("Room", hostService.activeRoomID)
                     settingRow("Latency", "-- ms")
                     settingRow("Resolution", "Adaptive")
@@ -703,6 +727,9 @@ struct HostView: View {
     private func startSession() async {
         viewerCount = 0
         sessionCode = "-----"
+        webRTCService.setMediaOptions(
+            publishMicrophone: shareMicrophone
+        )
 
         signalingService.onViewerJoined = {
             viewerCount += 1

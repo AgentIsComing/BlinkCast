@@ -7,6 +7,13 @@ import CoreMedia
 import CoreVideo
 
 final class ScreenCaptureService: NSObject, @unchecked Sendable {
+    enum Source: String, Sendable {
+        case entireScreen
+        case monitor
+        case window
+        case application
+    }
+
     enum CaptureError: LocalizedError {
         case noDisplay
         case noPermission
@@ -32,7 +39,7 @@ final class ScreenCaptureService: NSObject, @unchecked Sendable {
         super.init()
     }
 
-    func start() async throws {
+    func start(source: Source) async throws {
         let content: SCShareableContent
 
         do {
@@ -44,18 +51,48 @@ final class ScreenCaptureService: NSObject, @unchecked Sendable {
             throw CaptureError.noPermission
         }
 
-        guard let display = content.displays.first else {
-            throw CaptureError.noDisplay
+        let filter: SCContentFilter
+        let width: Int
+        let height: Int
+
+        switch source {
+        case .entireScreen, .monitor:
+            guard let display = content.displays.first else {
+                throw CaptureError.noDisplay
+            }
+            filter = SCContentFilter(
+                display: display,
+                excludingApplications: [],
+                exceptingWindows: []
+            )
+            width = display.width
+            height = display.height
+
+        case .window:
+            guard let window = content.windows.first else {
+                throw CaptureError.noDisplay
+            }
+            filter = SCContentFilter(desktopIndependentWindow: window)
+            width = Int(window.frame.width)
+            height = Int(window.frame.height)
+
+        case .application:
+            guard let application = content.applications.first else {
+                throw CaptureError.noDisplay
+            }
+            guard let window = content.windows.first(where: {
+                $0.owningApplication?.processID == application.processID
+            }) else {
+                throw CaptureError.noDisplay
+            }
+            filter = SCContentFilter(desktopIndependentWindow: window)
+            width = Int(window.frame.width)
+            height = Int(window.frame.height)
         }
 
-        let filter = SCContentFilter(
-            display: display,
-            excludingApplications: [],
-            exceptingWindows: []
-        )
         let configuration = SCStreamConfiguration()
-        configuration.width = min(display.width * 2, 3840)
-        configuration.height = min(display.height * 2, 2160)
+        configuration.width = min(max(width, 1) * 2, 3840)
+        configuration.height = min(max(height, 1) * 2, 2160)
         configuration.minimumFrameInterval = CMTime(value: 1, timescale: 30)
         configuration.queueDepth = 3
         configuration.pixelFormat = kCVPixelFormatType_32BGRA

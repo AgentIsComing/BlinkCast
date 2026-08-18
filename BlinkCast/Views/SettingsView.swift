@@ -20,6 +20,9 @@ struct SettingsView: View {
     @AppStorage("chatEnabled")
     private var chatEnabled = true
 
+    @AppStorage("blinkcast.receiveAudio")
+    private var receiveAudio = false
+
     @AppStorage("blinkcast.iceServerURLs")
     private var iceServerURLs = ""
 
@@ -188,6 +191,11 @@ struct SettingsView: View {
                 Toggle(
                     "Enable session chat",
                     isOn: $chatEnabled
+                )
+
+                Toggle(
+                    "Receive shared audio",
+                    isOn: $receiveAudio
                 )
             }
         }

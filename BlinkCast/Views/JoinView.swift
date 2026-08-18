@@ -284,6 +284,13 @@ struct JoinView: View {
                 }
                 .buttonStyle(BlinkSecondaryButtonStyle())
             }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("WebRTC: \(webRTCService.peerConnectionState)")
+                Text("ICE: \(webRTCService.iceConnectionState)")
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
         }
     }
 

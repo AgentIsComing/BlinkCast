@@ -2,6 +2,9 @@ import SwiftUI
 
 @main
 struct BlinkCastApp: App {
+    @Environment(\.scenePhase)
+    private var scenePhase
+
     @AppStorage("accentTheme")
     private var accentTheme = AccentTheme.blue.rawValue
 
@@ -26,6 +29,11 @@ struct BlinkCastApp: App {
             .preferredColorScheme(
                 preferredColorScheme
             )
+            .onChange(of: scenePhase) { _, phase in
+                guard phase == .background else { return }
+                WebRTCService.shared.stop()
+                SignalingService.shared.disconnect()
+            }
         }
 
         #if os(macOS)

@@ -25,6 +25,7 @@ final class SignalingService: NSObject, ObservableObject {
 
     @Published private(set) var state: ConnectionState = .disconnected
     @Published private(set) var hostAvailable = false
+    @Published private(set) var reconnectAttempt = 0
 
     var onSignal: ((SignalEnvelope) -> Void)?
     var onViewerJoined: (() -> Void)?
@@ -45,6 +46,8 @@ final class SignalingService: NSObject, ObservableObject {
     private var roomID = ""
     private var role: Role = .viewer
     private var clientID = ""
+    private var shouldReconnect = false
+    private var reconnectTask: Task<Void, Never>?
 
     private override init() {
         super.init()
@@ -56,6 +59,7 @@ final class SignalingService: NSObject, ObservableObject {
         role: Role
     ) {
         disconnect()
+        shouldReconnect = true
 
         guard let normalizedURL = normalizeSignalURL(signalURL) else {
             state = .failed("Invalid signaling URL.")
@@ -66,6 +70,7 @@ final class SignalingService: NSObject, ObservableObject {
         self.roomID = roomID
         self.role = role
         self.clientID = "\(role.rawValue)-\(UUID().uuidString.lowercased().prefix(8))"
+        reconnectAttempt = 0
 
         state = .connecting
         hostAvailable = false
@@ -87,6 +92,9 @@ final class SignalingService: NSObject, ObservableObject {
     }
 
     func disconnect() {
+        shouldReconnect = false
+        reconnectTask?.cancel()
+        reconnectTask = nil
         webSocketTask?.cancel(with: .normalClosure, reason: nil)
         webSocketTask = nil
 
@@ -95,6 +103,7 @@ final class SignalingService: NSObject, ObservableObject {
 
         state = .disconnected
         hostAvailable = false
+        reconnectAttempt = 0
     }
 
     func sendSignal(_ data: [String: Any]) {
@@ -173,9 +182,57 @@ final class SignalingService: NSObject, ObservableObject {
 
             case .failure(let error):
                 Task { @MainActor in
-                    self.state = .failed(error.localizedDescription)
+                    self.handleTransportFailure(error)
                 }
             }
+        }
+    }
+
+    private func handleTransportFailure(_ error: Error) {
+        guard shouldReconnect else {
+            state = .failed(error.localizedDescription)
+            return
+        }
+
+        scheduleReconnect(message: error.localizedDescription)
+    }
+
+    private func scheduleReconnect(message: String) {
+        guard reconnectTask == nil,
+              shouldReconnect,
+              let signalURL,
+              !roomID.isEmpty else {
+            state = .failed(message)
+            return
+        }
+
+        webSocketTask = nil
+        urlSession?.invalidateAndCancel()
+        urlSession = nil
+        state = .connecting
+        reconnectAttempt += 1
+
+        let attempt = reconnectAttempt
+        let delay = min(pow(2.0, Double(attempt - 1)), 30.0)
+        reconnectTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: .seconds(delay))
+            } catch {
+                return
+            }
+
+            guard let self,
+                  self.shouldReconnect else {
+                return
+            }
+
+            self.reconnectTask = nil
+            self.connect(
+                signalURL: signalURL.absoluteString,
+                roomID: self.roomID,
+                role: self.role
+            )
+            self.reconnectAttempt = attempt
         }
     }
 
@@ -281,6 +338,9 @@ extension SignalingService: URLSessionWebSocketDelegate {
         didOpenWithProtocol protocol: String?
     ) {
         Task { @MainActor in
+            self.reconnectTask?.cancel()
+            self.reconnectTask = nil
+            self.reconnectAttempt = 0
             self.state = .connected
             self.sendJoin()
         }
@@ -293,12 +353,15 @@ extension SignalingService: URLSessionWebSocketDelegate {
         reason: Data?
     ) {
         Task { @MainActor in
-            switch self.state {
-            case .failed:
-                break
-            default:
+            guard self.shouldReconnect else {
                 self.state = .disconnected
+                return
             }
+
+            let message = reason.flatMap {
+                String(data: $0, encoding: .utf8)
+            } ?? "Signaling connection closed (\(closeCode.rawValue))."
+            self.scheduleReconnect(message: message)
         }
     }
 }
