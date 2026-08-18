@@ -56,8 +56,12 @@ final class WebRTCService: NSObject, ObservableObject {
     private var remoteClientID: String?
     private var reconnectTask: Task<Void, Never>?
     private var publishMicrophone = false
+    private var publishCamera = false
     private var quality: Quality = .balanced
     private var sharingPaused = false
+    #if os(iOS) || os(macOS)
+    private var cameraCaptureService: CameraCaptureService?
+    #endif
     #if os(macOS)
     private var screenCaptureService: ScreenCaptureService?
     private var captureSource: ScreenCaptureService.Source = .entireScreen
@@ -203,6 +207,10 @@ final class WebRTCService: NSObject, ObservableObject {
             localAudioTrack = audioTrack
         }
 
+        if publishCamera {
+            addCameraTrack(to: peerConnection)
+        }
+
         Task { @MainActor [weak self] in
             do {
                 try await self?.screenCaptureService?.start(
@@ -219,6 +227,12 @@ final class WebRTCService: NSObject, ObservableObject {
         }
         #endif
 
+        #if os(iOS)
+        if publishCamera {
+            addCameraTrack(to: peerConnection)
+        }
+        #endif
+
         state = .negotiating
     }
 
@@ -228,8 +242,12 @@ final class WebRTCService: NSObject, ObservableObject {
     }
     #endif
 
-    func setMediaOptions(publishMicrophone: Bool) {
+    func setMediaOptions(
+        publishMicrophone: Bool,
+        publishCamera: Bool = false
+    ) {
         self.publishMicrophone = publishMicrophone
+        self.publishCamera = publishCamera
     }
 
     func setQuality(_ quality: Quality) {
@@ -256,6 +274,13 @@ final class WebRTCService: NSObject, ObservableObject {
         remoteVideoTrack = nil
         localVideoTrack = nil
         localAudioTrack = nil
+        #if os(iOS) || os(macOS)
+        let cameraService = cameraCaptureService
+        cameraCaptureService = nil
+        Task {
+            await cameraService?.stop()
+        }
+        #endif
         peerConnectionState = "closed"
         iceConnectionState = "closed"
         lastError = nil
@@ -304,6 +329,14 @@ final class WebRTCService: NSObject, ObservableObject {
         remoteVideoTrack = nil
         localVideoTrack = nil
 
+        #if os(iOS) || os(macOS)
+        let cameraService = cameraCaptureService
+        cameraCaptureService = nil
+        Task {
+            await cameraService?.stop()
+        }
+        #endif
+
         #if os(macOS)
         let captureService = screenCaptureService
         screenCaptureService = nil
@@ -312,6 +345,31 @@ final class WebRTCService: NSObject, ObservableObject {
         }
         #endif
     }
+
+    #if os(iOS) || os(macOS)
+    private func addCameraTrack(to peerConnection: RTCPeerConnection) {
+        let videoSource = factory.videoSource()
+        let cameraTrack = factory.videoTrack(
+            with: videoSource,
+            trackId: "blinkcast-camera"
+        )
+        _ = peerConnection.add(
+            cameraTrack,
+            streamIds: ["blinkcast-stream"]
+        )
+        localVideoTrack = cameraTrack
+
+        let cameraService = CameraCaptureService(videoSource: videoSource)
+        cameraCaptureService = cameraService
+        Task { @MainActor [weak self] in
+            do {
+                try await cameraService.start()
+            } catch {
+                self?.fail(error.localizedDescription)
+            }
+        }
+    }
+    #endif
 
     private func makePeerConnectionConfiguration() -> RTCConfiguration {
         let configuration = RTCConfiguration()

@@ -779,7 +779,8 @@ struct HostView: View {
         viewerCount = 0
         sessionCode = "-----"
         webRTCService.setMediaOptions(
-            publishMicrophone: shareMicrophone
+            publishMicrophone: shareMicrophone,
+            publishCamera: shareCamera
         )
         webRTCService.setQuality(quality)
 
