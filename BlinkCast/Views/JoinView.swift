@@ -19,6 +19,7 @@ struct JoinView: View {
     @State private var joinCode = ""
     @State private var roomName = ""
     @State private var roomPassword = ""
+    @State private var isStreamFullscreen = false
 
     var body: some View {
         ScrollView {
@@ -49,6 +50,18 @@ struct JoinView: View {
         .onDisappear {
             if !isConnected {
                 webRTCService.stop()
+            }
+        }
+        .overlay {
+            if isStreamFullscreen,
+               let track = webRTCService.remoteVideoTrack {
+                BlinkFullscreenVideoView(
+                    track: track,
+                    dismiss: { isStreamFullscreen = false }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.black)
+                .zIndex(10)
             }
         }
     }
@@ -253,6 +266,26 @@ struct JoinView: View {
                             style: .continuous
                         )
                     )
+
+                VStack {
+                    HStack {
+                        Spacer()
+
+                        Button {
+                            isStreamFullscreen = true
+                        } label: {
+                            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                .frame(width: 36, height: 36)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.white)
+                        .background(.black.opacity(0.55), in: Circle())
+                        .help("Enter Full Screen Stream")
+                        .padding(14)
+                    }
+
+                    Spacer()
+                }
             }
             .aspectRatio(16 / 9, contentMode: .fit)
             .frame(maxWidth: 1100)
@@ -479,6 +512,39 @@ struct JoinView: View {
             return .red
         default:
             return .orange
+        }
+    }
+}
+
+private struct BlinkFullscreenVideoView: View {
+    let track: RTCVideoTrack
+    let dismiss: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color.black
+                .ignoresSafeArea()
+
+            BlinkRemoteVideoView(track: track)
+                .ignoresSafeArea()
+
+            VStack {
+                HStack {
+                    Spacer()
+
+                    Button(action: dismiss) {
+                        Image(systemName: "xmark")
+                            .frame(width: 40, height: 40)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.white)
+                    .background(.black.opacity(0.6), in: Circle())
+                    .help("Exit Full Screen Stream")
+                    .padding(18)
+                }
+
+                Spacer()
+            }
         }
     }
 }
