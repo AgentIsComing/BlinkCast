@@ -320,14 +320,22 @@ final class SignalingService: NSObject, ObservableObject {
             return nil
         }
 
-        if !value.hasSuffix("/signal") {
-            value = value.trimmingCharacters(
-                in: CharacterSet(charactersIn: "/")
-            )
-            value += "/signal"
+        guard var components = URLComponents(string: value),
+              let host = components.host,
+              !host.isEmpty else {
+            return nil
         }
 
-        return URL(string: value)
+        let path = components.path.trimmingCharacters(
+            in: CharacterSet(charactersIn: "/")
+        )
+        if path.isEmpty {
+            components.path = "/signal"
+        } else if path != "signal" {
+            components.path = "/\(path)/signal"
+        }
+
+        return components.url
     }
 }
 

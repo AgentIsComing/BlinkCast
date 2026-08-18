@@ -20,7 +20,7 @@ final class HostSessionService: ObservableObject {
     private let signalingService = SignalingService.shared
 
     private let codeServiceURL =
-        "https://live-screen-share-code-service.jaydenrmaine.workers.dev"
+        "https://blinkcast-signaling.jaydenrmaine.workers.dev"
 
     private init() {}
 
@@ -222,15 +222,22 @@ final class HostSessionService: ObservableObject {
             return nil
         }
 
-        value = value.trimmingCharacters(
-            in: CharacterSet(charactersIn: "/")
-        )
-
-        if !value.hasSuffix("/signal") {
-            value += "/signal"
+        guard var components = URLComponents(string: value),
+              let host = components.host,
+              !host.isEmpty else {
+            return nil
         }
 
-        return value
+        let path = components.path.trimmingCharacters(
+            in: CharacterSet(charactersIn: "/")
+        )
+        if path.isEmpty {
+            components.path = "/signal"
+        } else if path != "signal" {
+            components.path = "/\(path)/signal"
+        }
+
+        return components.string
     }
 
     private func extractErrorMessage(from data: Data) -> String {
