@@ -760,7 +760,7 @@ extension WebRTCService: RTCPeerConnectionDelegate {
             switch newState {
             case .connected:
                 self.state = .connected
-            case .connecting, .disconnected:
+            case .disconnected:
                 self.scheduleReconnect()
             case .failed:
                 self.fail("WebRTC connection failed.")
