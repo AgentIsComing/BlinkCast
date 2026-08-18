@@ -1,6 +1,10 @@
 import SwiftUI
 @preconcurrency import WebRTC
 
+#if os(macOS)
+import AppKit
+#endif
+
 struct HostView: View {
     enum SessionType: String, CaseIterable, Identifiable {
         case screenShare = "Screen Share"
@@ -54,6 +58,7 @@ struct HostView: View {
     @State private var shareSystemAudio = true
     @State private var shareMicrophone = false
     @State private var shareCamera = false
+    @State private var quality: WebRTCService.Quality = .balanced
 
     @State private var showAdvanced = false
     @State private var isHosting = false
@@ -76,6 +81,7 @@ struct HostView: View {
                     setupHeader
                     sessionTypePicker
                     sourcePicker
+                    qualityPicker
                     mediaControls
                     sessionSecurity
                     advancedSettings
@@ -284,6 +290,27 @@ struct HostView: View {
         }
     }
 
+    private var qualityPicker: some View {
+        BlinkGlassCard {
+            VStack(alignment: .leading, spacing: 14) {
+                BlinkSectionHeader(
+                    title: "Stream Quality",
+                    subtitle: "Choose the tradeoff between detail, bandwidth, and battery."
+                )
+
+                Picker("Quality", selection: $quality) {
+                    Text("Low").tag(WebRTCService.Quality.low)
+                    Text("Balanced").tag(WebRTCService.Quality.balanced)
+                    Text("High").tag(WebRTCService.Quality.high)
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: quality) { _, value in
+                    webRTCService.setQuality(value)
+                }
+            }
+        }
+    }
+
     private func mediaToggle(
         title: String,
         icon: String,
@@ -458,37 +485,55 @@ struct HostView: View {
 
     @ViewBuilder
     private var hostStatusView: some View {
-        switch hostService.state {
-        case .idle:
-            EmptyView()
+        VStack(alignment: .leading, spacing: 10) {
+            switch hostService.state {
+            case .idle:
+                EmptyView()
 
-        case .publishing:
-            hostStatusRow(
-                text: "Publishing join code...",
-                icon: "number.circle.fill",
-                tint: .orange
-            )
+            case .publishing:
+                hostStatusRow(
+                    text: "Publishing join code...",
+                    icon: "number.circle.fill",
+                    tint: .orange
+                )
 
-        case .connecting:
-            hostStatusRow(
-                text: "Connecting host to signaling...",
-                icon: "antenna.radiowaves.left.and.right",
-                tint: .orange
-            )
+            case .connecting:
+                hostStatusRow(
+                    text: "Connecting host to signaling...",
+                    icon: "antenna.radiowaves.left.and.right",
+                    tint: .orange
+                )
 
-        case .ready:
-            hostStatusRow(
-                text: "Host signaling is ready",
-                icon: "checkmark.circle.fill",
-                tint: .green
-            )
+            case .ready:
+                hostStatusRow(
+                    text: "Host signaling is ready",
+                    icon: "checkmark.circle.fill",
+                    tint: .green
+                )
 
-        case .failed(let message):
-            hostStatusRow(
-                text: message,
-                icon: "exclamationmark.triangle.fill",
-                tint: .red
-            )
+            case .failed(let message):
+                hostStatusRow(
+                    text: message,
+                    icon: "exclamationmark.triangle.fill",
+                    tint: .red
+                )
+
+                #if os(macOS)
+                if message.localizedCaseInsensitiveContains("Screen Recording") {
+                    Button {
+                        NSWorkspace.shared.open(
+                            URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!
+                        )
+                    } label: {
+                        Label(
+                            "Open Screen Recording Settings",
+                            systemImage: "gearshape.fill"
+                        )
+                    }
+                    .buttonStyle(BlinkSecondaryButtonStyle())
+                }
+                #endif
+            }
         }
     }
 
@@ -627,6 +672,12 @@ struct HostView: View {
                 title: "Source",
                 icon: "rectangle.on.rectangle"
             )
+            controlButton(
+                title: webRTCService.isSharingPaused ? "Resume" : "Pause",
+                icon: webRTCService.isSharingPaused
+                    ? "play.fill"
+                    : "pause.fill"
+            )
         }
     }
 
@@ -730,6 +781,7 @@ struct HostView: View {
         webRTCService.setMediaOptions(
             publishMicrophone: shareMicrophone
         )
+        webRTCService.setQuality(quality)
 
         signalingService.onViewerJoined = {
             viewerCount += 1
@@ -767,6 +819,10 @@ struct HostView: View {
             shareMicrophone.toggle()
         case "Camera":
             shareCamera.toggle()
+        case "Pause", "Resume":
+            webRTCService.setSharingPaused(
+                !webRTCService.isSharingPaused
+            )
         default:
             break
         }

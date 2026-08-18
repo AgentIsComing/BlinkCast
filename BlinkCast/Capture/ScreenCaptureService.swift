@@ -7,6 +7,12 @@ import CoreMedia
 import CoreVideo
 
 final class ScreenCaptureService: NSObject, @unchecked Sendable {
+    struct Quality: Sendable {
+        let width: Int
+        let height: Int
+        let framesPerSecond: Int
+    }
+
     enum Source: String, Sendable {
         case entireScreen
         case monitor
@@ -39,7 +45,7 @@ final class ScreenCaptureService: NSObject, @unchecked Sendable {
         super.init()
     }
 
-    func start(source: Source) async throws {
+    func start(source: Source, quality: Quality) async throws {
         let content: SCShareableContent
 
         do {
@@ -91,9 +97,12 @@ final class ScreenCaptureService: NSObject, @unchecked Sendable {
         }
 
         let configuration = SCStreamConfiguration()
-        configuration.width = min(max(width, 1) * 2, 3840)
-        configuration.height = min(max(height, 1) * 2, 2160)
-        configuration.minimumFrameInterval = CMTime(value: 1, timescale: 30)
+        configuration.width = min(max(width, 1) * 2, quality.width)
+        configuration.height = min(max(height, 1) * 2, quality.height)
+        configuration.minimumFrameInterval = CMTime(
+            value: 1,
+            timescale: CMTimeScale(quality.framesPerSecond)
+        )
         configuration.queueDepth = 3
         configuration.pixelFormat = kCVPixelFormatType_32BGRA
 

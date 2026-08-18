@@ -22,6 +22,25 @@ final class WebRTCService: NSObject, ObservableObject {
         case failed(String)
     }
 
+    enum Quality: String, CaseIterable, Sendable {
+        case balanced
+        case high
+        case low
+
+        #if os(macOS)
+        var captureQuality: ScreenCaptureService.Quality {
+            switch self {
+            case .balanced:
+                return .init(width: 2560, height: 1440, framesPerSecond: 30)
+            case .high:
+                return .init(width: 3840, height: 2160, framesPerSecond: 60)
+            case .low:
+                return .init(width: 1280, height: 720, framesPerSecond: 24)
+            }
+        }
+        #endif
+    }
+
     @Published private(set) var state: State = .idle
     @Published private(set) var remoteVideoTrack: RTCVideoTrack?
     @Published private(set) var localVideoTrack: RTCVideoTrack?
@@ -37,6 +56,8 @@ final class WebRTCService: NSObject, ObservableObject {
     private var remoteClientID: String?
     private var reconnectTask: Task<Void, Never>?
     private var publishMicrophone = false
+    private var quality: Quality = .balanced
+    private var sharingPaused = false
     #if os(macOS)
     private var screenCaptureService: ScreenCaptureService?
     private var captureSource: ScreenCaptureService.Source = .entireScreen
@@ -183,7 +204,12 @@ final class WebRTCService: NSObject, ObservableObject {
         Task { @MainActor [weak self] in
             do {
                 try await self?.screenCaptureService?.start(
-                    source: self?.captureSource ?? .entireScreen
+                    source: self?.captureSource ?? .entireScreen,
+                    quality: self?.quality.captureQuality ?? .init(
+                        width: 2560,
+                        height: 1440,
+                        framesPerSecond: 30
+                    )
                 )
             } catch {
                 self?.fail("Could not start screen capture: \(error.localizedDescription)")
@@ -203,6 +229,20 @@ final class WebRTCService: NSObject, ObservableObject {
 
     func setMediaOptions(publishMicrophone: Bool) {
         self.publishMicrophone = publishMicrophone
+    }
+
+    func setQuality(_ quality: Quality) {
+        self.quality = quality
+    }
+
+    func setSharingPaused(_ paused: Bool) {
+        sharingPaused = paused
+        localVideoTrack?.isEnabled = !paused
+        localAudioTrack?.isEnabled = !paused
+    }
+
+    var isSharingPaused: Bool {
+        sharingPaused
     }
 
     func stop() {
