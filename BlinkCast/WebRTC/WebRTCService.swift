@@ -810,9 +810,9 @@ final class BlinkMacRTCVideoView: NSView, RTCVideoRenderer {
         layer?.contentsGravity = .resizeAspect
     }
 
-    func setSize(_ size: CGSize) {}
+    nonisolated func setSize(_ size: CGSize) {}
 
-    func renderFrame(_ frame: RTCVideoFrame?) {
+    nonisolated func renderFrame(_ frame: RTCVideoFrame?) {
         guard let frame,
               let rtcBuffer = frame.buffer as? RTCCVPixelBuffer else {
             return
