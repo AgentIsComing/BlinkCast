@@ -38,6 +38,8 @@ final class ScreenCaptureService: NSObject, @unchecked Sendable {
     private let videoCapturer: RTCVideoCapturer
     private let outputQueue = DispatchQueue(label: "com.blinkcast.screen-capture")
     private var stream: SCStream?
+    private var pendingFrame: RTCVideoFrame?
+    private var frameDeliveryScheduled = false
 
     init(videoSource: RTCVideoSource) {
         self.videoSource = videoSource
@@ -147,7 +149,26 @@ extension ScreenCaptureService: SCStreamOutput, SCStreamDelegate {
             rotation: ._0,
             timeStampNs: timestamp
         )
-        videoSource.capturer(videoCapturer, didCapture: frame)
+        pendingFrame = frame
+        guard !frameDeliveryScheduled else { return }
+        frameDeliveryScheduled = true
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            let latestFrame = self.outputQueue.sync {
+                self.frameDeliveryScheduled = false
+                let frame = self.pendingFrame
+                self.pendingFrame = nil
+                return frame
+            }
+
+            if let latestFrame {
+                self.videoSource.capturer(
+                    self.videoCapturer,
+                    didCapture: latestFrame
+                )
+            }
+        }
     }
 
     func stream(

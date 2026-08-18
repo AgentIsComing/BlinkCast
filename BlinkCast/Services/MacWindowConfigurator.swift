@@ -15,9 +15,7 @@ struct MacWindowConfigurator: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        DispatchQueue.main.async {
-            configureWindow(from: nsView)
-        }
+        
     }
 
     private func configureWindow(from view: NSView) {
@@ -36,6 +34,12 @@ struct MacWindowConfigurator: NSViewRepresentable {
 
         window.isMovable = true
         window.isMovableByWindowBackground = true
+        window.isRestorable = false
+        window.restorationClass = nil
+        window.level = .normal
+        window.collectionBehavior = [.managed, .fullScreenPrimary]
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
 
         window.standardWindowButton(.closeButton)?.isHidden = false
         window.standardWindowButton(.miniaturizeButton)?.isHidden = false
