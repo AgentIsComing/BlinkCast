@@ -732,6 +732,7 @@ extension WebRTCService: RTCPeerConnectionDelegate {
         didChange newState: RTCIceConnectionState
     ) {
         let state = String(describing: newState)
+        NSLog("BlinkCast ICE state: \(state)")
         Task { @MainActor in
             self.iceConnectionState = state
         }
@@ -773,6 +774,7 @@ extension WebRTCService: RTCPeerConnectionDelegate {
         didChange newState: RTCPeerConnectionState
     ) {
         let state = String(describing: newState)
+        NSLog("BlinkCast peer state: \(state)")
         Task { @MainActor in
             self.peerConnectionState = state
             switch newState {
