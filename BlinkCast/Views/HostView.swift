@@ -49,8 +49,8 @@ struct HostView: View {
     @State private var roomName = ""
     @State private var roomPassword = ""
 
-    @AppStorage("blinkcast.signalingURL")
-    private var signalingURL = ""
+    private let signalingURL =
+        "wss://blinkcast-signaling.jaydenrmaine.workers.dev/signal"
 
     @State private var requireApproval = true
     @State private var allowRemoteControl = false
@@ -342,20 +342,8 @@ struct HostView: View {
             ) {
                 BlinkSectionHeader(
                     title: "Session Access",
-                    subtitle: "Control who can join and how this Apple device reaches BlinkCast signaling."
+                    subtitle: "Share the five-digit code with the person joining this session."
                 )
-
-                TextField(
-                    "Signaling URL (wss://.../signal)",
-                    text: $signalingURL
-                )
-                .textFieldStyle(.roundedBorder)
-
-                Text(
-                    "Use the public signaling URL for the BlinkCast backend. The URL is saved on this device."
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
 
                 Divider()
 
@@ -471,16 +459,7 @@ struct HostView: View {
         }
         .buttonStyle(BlinkPrimaryButtonStyle())
         .frame(maxWidth: 520)
-        .disabled(
-            signalingURL.trimmingCharacters(
-                in: .whitespacesAndNewlines
-            ).isEmpty || isStarting
-        )
-        .opacity(
-            signalingURL.trimmingCharacters(
-                in: .whitespacesAndNewlines
-            ).isEmpty ? 0.55 : 1
-        )
+        .disabled(isStarting)
     }
 
     @ViewBuilder

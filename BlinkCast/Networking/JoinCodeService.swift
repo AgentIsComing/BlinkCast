@@ -25,7 +25,7 @@ final class JoinCodeService: ObservableObject {
     private let signalingService = SignalingService.shared
 
     private let defaultCodeServiceURL =
-        "https://live-screen-share-code-service.jaydenrmaine.workers.dev"
+        "https://blinkcast-signaling.jaydenrmaine.workers.dev"
 
     private init() {
         signalingService.onBroadcastEnded = { [weak self] in

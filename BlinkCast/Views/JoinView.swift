@@ -64,6 +64,13 @@ struct JoinView: View {
                 .zIndex(10)
             }
         }
+        #if os(macOS)
+        .onExitCommand {
+            if isStreamFullscreen {
+                isStreamFullscreen = false
+            }
+        }
+        #endif
     }
 
     private var joinCard: some View {
