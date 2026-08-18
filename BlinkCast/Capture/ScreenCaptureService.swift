@@ -38,6 +38,7 @@ final class ScreenCaptureService: NSObject, @unchecked Sendable {
     private nonisolated(unsafe) let videoCapturer: RTCVideoCapturer
     private let outputQueue = DispatchQueue(label: "com.blinkcast.screen-capture")
     private var stream: SCStream?
+    private nonisolated(unsafe) var frameCount = 0
 
     init(videoSource: RTCVideoSource) {
         self.videoSource = videoSource
@@ -147,6 +148,10 @@ extension ScreenCaptureService: SCStreamOutput, SCStreamDelegate {
             rotation: ._0,
             timeStampNs: timestamp
         )
+        frameCount += 1
+        if frameCount == 1 || frameCount % 120 == 0 {
+            NSLog("BlinkCast captured screen frame: \(frameCount)")
+        }
         videoSource.capturer(videoCapturer, didCapture: frame)
     }
 

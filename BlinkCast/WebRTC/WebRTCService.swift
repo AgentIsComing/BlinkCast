@@ -815,6 +815,7 @@ extension WebRTCService: RTCPeerConnectionDelegate {
 #if os(macOS)
 final class BlinkMacRTCVideoView: NSView, RTCVideoRenderer {
     private let ciContext = CIContext(options: nil)
+    private nonisolated(unsafe) var didRenderFrame = false
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -849,6 +850,11 @@ final class BlinkMacRTCVideoView: NSView, RTCVideoRenderer {
 
         guard let cgImage = ciContext.createCGImage(ciImage, from: rect) else {
             return
+        }
+
+        if !didRenderFrame {
+            didRenderFrame = true
+            NSLog("BlinkCast rendered first remote video frame")
         }
 
         DispatchQueue.main.async { [weak self] in
