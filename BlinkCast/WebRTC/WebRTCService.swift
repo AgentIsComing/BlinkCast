@@ -164,6 +164,13 @@ final class WebRTCService: NSObject, ObservableObject {
             return
         }
 
+        #if os(iOS)
+        guard publishCamera else {
+            fail("iPad can view screen shares. Enable Camera to host camera video.")
+            return
+        }
+        #endif
+
         state = .preparing
 
         let configuration = makePeerConnectionConfiguration()

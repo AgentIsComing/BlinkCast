@@ -429,6 +429,22 @@ struct HostView: View {
         }
     }
 
+    private var capturePreparationTitle: String {
+        #if os(macOS)
+        return "Preparing Screen Capture"
+        #else
+        return "Preparing Camera"
+        #endif
+    }
+
+    private var capturePreparationSubtitle: String {
+        #if os(macOS)
+        return "Screen Recording permission is required to publish video."
+        #else
+        return "Camera permission is required to publish video."
+        #endif
+    }
+
     #if os(macOS)
     private func captureSource(
         for source: ShareSource
@@ -599,10 +615,10 @@ struct HostView: View {
                     )
                     .font(.system(size: 50))
 
-                    Text("Preparing Screen Capture")
+                    Text(capturePreparationTitle)
                         .font(.title2.bold())
 
-                    Text("Screen Recording permission is required to publish video.")
+                    Text(capturePreparationSubtitle)
                         .foregroundStyle(.secondary)
                 }
                 .foregroundStyle(.white)
