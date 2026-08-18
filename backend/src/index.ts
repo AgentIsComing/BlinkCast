@@ -335,7 +335,6 @@ export class Room {
       return;
     }
 
-    webSocket.serializeAttachment({ role, roomId, clientId } satisfies ClientInfo);
     const hasHost = this.findRole("host") !== null;
     if (role === "host" && hasHost) {
       webSocket.send(JSON.stringify({ type: "error", message: "A host is already connected." }));
@@ -343,6 +342,7 @@ export class Room {
       return;
     }
 
+    webSocket.serializeAttachment({ role, roomId, clientId } satisfies ClientInfo);
     webSocket.send(JSON.stringify({ type: "joined", hostAvailable: role === "host" || hasHost }));
     if (role === "host") {
       this.broadcast({ type: "host-available" }, webSocket);
