@@ -1,5 +1,9 @@
 import SwiftUI
 
+#if os(macOS)
+import AppKit
+#endif
+
 struct ContentView: View {
     @AppStorage("hasCompletedOnboarding")
     private var hasCompletedOnboarding = false
@@ -107,6 +111,17 @@ struct MainAppView: View {
                 systemImage: "checkmark.circle.fill",
                 tint: .green
             )
+
+            #if os(macOS)
+            Button {
+                (NSApp.keyWindow ?? NSApp.windows.first)?.toggleFullScreen(nil)
+            } label: {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    .frame(width: 30, height: 30)
+            }
+            .buttonStyle(.plain)
+            .help("Toggle Full Screen")
+            #endif
         }
         .padding(.horizontal, 14)
         .frame(height: 52)
