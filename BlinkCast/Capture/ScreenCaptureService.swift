@@ -34,12 +34,12 @@ final class ScreenCaptureService: NSObject, @unchecked Sendable {
         }
     }
 
-    let videoSource: RTCVideoSource
-    private let videoCapturer: RTCVideoCapturer
+    nonisolated(unsafe) let videoSource: RTCVideoSource
+    private nonisolated(unsafe) let videoCapturer: RTCVideoCapturer
     private let outputQueue = DispatchQueue(label: "com.blinkcast.screen-capture")
     private var stream: SCStream?
-    private var pendingFrame: RTCVideoFrame?
-    private var frameDeliveryScheduled = false
+    private nonisolated(unsafe) var pendingFrame: RTCVideoFrame?
+    private nonisolated(unsafe) var frameDeliveryScheduled = false
 
     init(videoSource: RTCVideoSource) {
         self.videoSource = videoSource
@@ -130,7 +130,7 @@ final class ScreenCaptureService: NSObject, @unchecked Sendable {
 }
 
 extension ScreenCaptureService: SCStreamOutput, SCStreamDelegate {
-    func stream(
+    nonisolated func stream(
         _ stream: SCStream,
         didOutputSampleBuffer sampleBuffer: CMSampleBuffer,
         of type: SCStreamOutputType
@@ -171,7 +171,7 @@ extension ScreenCaptureService: SCStreamOutput, SCStreamDelegate {
         }
     }
 
-    func stream(
+    nonisolated func stream(
         _ stream: SCStream,
         didStopWithError error: Error
     ) {
