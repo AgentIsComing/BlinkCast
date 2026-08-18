@@ -44,6 +44,7 @@ final class WebRTCService: NSObject, ObservableObject {
     @Published private(set) var state: State = .idle
     @Published private(set) var remoteVideoTrack: RTCVideoTrack?
     @Published private(set) var localVideoTrack: RTCVideoTrack?
+    @Published private(set) var localCameraTrack: RTCVideoTrack?
     @Published private(set) var localAudioTrack: RTCAudioTrack?
     @Published private(set) var peerConnectionState = "new"
     @Published private(set) var iceConnectionState = "new"
@@ -273,6 +274,7 @@ final class WebRTCService: NSObject, ObservableObject {
         remoteClientID = nil
         remoteVideoTrack = nil
         localVideoTrack = nil
+        localCameraTrack = nil
         localAudioTrack = nil
         #if os(iOS) || os(macOS)
         let cameraService = cameraCaptureService
@@ -328,6 +330,7 @@ final class WebRTCService: NSObject, ObservableObject {
         remoteClientID = nil
         remoteVideoTrack = nil
         localVideoTrack = nil
+        localCameraTrack = nil
 
         #if os(iOS) || os(macOS)
         let cameraService = cameraCaptureService
@@ -357,7 +360,7 @@ final class WebRTCService: NSObject, ObservableObject {
             cameraTrack,
             streamIds: ["blinkcast-stream"]
         )
-        localVideoTrack = cameraTrack
+        localCameraTrack = cameraTrack
 
         let cameraService = CameraCaptureService(videoSource: videoSource)
         cameraCaptureService = cameraService
