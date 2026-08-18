@@ -61,9 +61,23 @@ final class SignalingService: NSObject, ObservableObject {
         disconnect()
         shouldReconnect = true
 
-        guard let normalizedURL = normalizeSignalURL(signalURL) else {
+        guard var normalizedURL = normalizeSignalURL(signalURL) else {
             state = .failed("Invalid signaling URL.")
             return
+        }
+
+        if var components = URLComponents(
+            url: normalizedURL,
+            resolvingAgainstBaseURL: false
+        ) {
+            components.queryItems = (components.queryItems ?? [])
+                .filter { $0.name != "roomId" }
+            components.queryItems?.append(
+                URLQueryItem(name: "roomId", value: roomID)
+            )
+            if let roomURL = components.url {
+                normalizedURL = roomURL
+            }
         }
 
         self.signalURL = normalizedURL
