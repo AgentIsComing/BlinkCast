@@ -962,14 +962,25 @@ extension WebRTCService: RTCPeerConnectionDelegate {
 
 #if os(macOS)
 final class BlinkMacRTCVideoView: NSView, RTCVideoRenderer {
-    private let ciContext = CIContext(options: nil)
+    private static let extendedRangeColorSpace = CGColorSpace(name: CGColorSpace.extendedSRGB) ?? CGColorSpaceCreateDeviceRGB()
+
+    private let ciContext = CIContext(options: [
+        .workingColorSpace: BlinkMacRTCVideoView.extendedRangeColorSpace,
+        .outputColorSpace: BlinkMacRTCVideoView.extendedRangeColorSpace,
+        .workingFormat: CIFormat.RGBAh
+    ])
     private nonisolated(unsafe) var didRenderFrame = false
+    private nonisolated(unsafe) var lastReportedSize: CGSize = .zero
+    // Set once from the SwiftUI wrapper; invoked from the WebRTC render thread whenever the stream's resolution changes.
+    nonisolated(unsafe) var onVideoSizeChange: ((CGSize) -> Void)?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
         layer?.backgroundColor = NSColor.black.cgColor
         layer?.contentsGravity = .resizeAspect
+        layer?.wantsExtendedDynamicRangeContent = true
+        layer?.contentsFormat = .RGBA16Float
     }
 
     required init?(coder: NSCoder) {
@@ -977,6 +988,8 @@ final class BlinkMacRTCVideoView: NSView, RTCVideoRenderer {
         wantsLayer = true
         layer?.backgroundColor = NSColor.black.cgColor
         layer?.contentsGravity = .resizeAspect
+        layer?.wantsExtendedDynamicRangeContent = true
+        layer?.contentsFormat = .RGBA16Float
     }
 
     @objc nonisolated func setSize(_ size: CGSize) {}
@@ -1012,7 +1025,12 @@ final class BlinkMacRTCVideoView: NSView, RTCVideoRenderer {
         }
 
         let outputRect = ciImage.extent.integral
-        guard let cgImage = ciContext.createCGImage(ciImage, from: outputRect) else {
+        guard let cgImage = ciContext.createCGImage(
+            ciImage,
+            from: outputRect,
+            format: .RGBAh,
+            colorSpace: Self.extendedRangeColorSpace
+        ) else {
             NSLog("BlinkCast macOS renderer could not create CGImage size=\(rect.size)")
             return
         }
@@ -1020,6 +1038,15 @@ final class BlinkMacRTCVideoView: NSView, RTCVideoRenderer {
         if !didRenderFrame {
             didRenderFrame = true
             NSLog("BlinkCast rendered first remote video frame size=\(rect.size) rotation=\(frame.rotation.rawValue)")
+        }
+
+        let orientedSize = outputRect.size
+        if orientedSize != lastReportedSize {
+            lastReportedSize = orientedSize
+            let callback = onVideoSizeChange
+            DispatchQueue.main.async {
+                callback?(orientedSize)
+            }
         }
 
         DispatchQueue.main.async { [weak self] in
@@ -1117,6 +1144,7 @@ final class BlinkMacRTCVideoView: NSView, RTCVideoRenderer {
 
 struct BlinkRemoteVideoView: NSViewRepresentable {
     let track: RTCVideoTrack
+    var onVideoSizeChange: ((CGSize) -> Void)? = nil
 
     final class Coordinator {
         var attachedTrack: RTCVideoTrack?
@@ -1134,6 +1162,8 @@ struct BlinkRemoteVideoView: NSViewRepresentable {
         _ view: BlinkMacRTCVideoView,
         context: Context
     ) {
+        view.onVideoSizeChange = onVideoSizeChange
+
         if context.coordinator.attachedTrack !== track {
             NSLog("BlinkCast macOS renderer attaching track id=\(track.trackId)")
             let previousTrack = context.coordinator.attachedTrack
@@ -1158,9 +1188,18 @@ struct BlinkRemoteVideoView: NSViewRepresentable {
 #else
 struct BlinkRemoteVideoView: UIViewRepresentable {
     let track: RTCVideoTrack
+    var onVideoSizeChange: ((CGSize) -> Void)? = nil
 
-    final class Coordinator {
+    final class Coordinator: NSObject, RTCVideoViewDelegate {
         var attachedTrack: RTCVideoTrack?
+        var onVideoSizeChange: ((CGSize) -> Void)?
+
+        func videoView(_ videoView: RTCVideoRenderer, didChangeVideoSize size: CGSize) {
+            let callback = onVideoSizeChange
+            DispatchQueue.main.async {
+                callback?(size)
+            }
+        }
     }
 
     func makeCoordinator() -> Coordinator {
@@ -1170,6 +1209,7 @@ struct BlinkRemoteVideoView: UIViewRepresentable {
     func makeUIView(context: Context) -> RTCMTLVideoView {
         let view = RTCMTLVideoView(frame: .zero)
         view.videoContentMode = .scaleAspectFit
+        view.delegate = context.coordinator
         return view
     }
 
@@ -1177,6 +1217,8 @@ struct BlinkRemoteVideoView: UIViewRepresentable {
         _ view: RTCMTLVideoView,
         context: Context
     ) {
+        context.coordinator.onVideoSizeChange = onVideoSizeChange
+
         if context.coordinator.attachedTrack !== track {
             let previousTrack = context.coordinator.attachedTrack
             context.coordinator.attachedTrack = track

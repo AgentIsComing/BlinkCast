@@ -20,6 +20,7 @@ struct JoinView: View {
     @State private var roomName = ""
     @State private var roomPassword = ""
     @State private var isStreamFullscreen = false
+    @State private var remoteVideoAspectRatio: CGFloat = 16 / 9
 
     var body: some View {
         ScrollView {
@@ -271,7 +272,10 @@ struct JoinView: View {
                 )
                 .fill(Color.black)
 
-                BlinkRemoteVideoView(track: track)
+                BlinkRemoteVideoView(track: track) { size in
+                    guard size.width > 0, size.height > 0 else { return }
+                    remoteVideoAspectRatio = size.width / size.height
+                }
                     .clipShape(
                         RoundedRectangle(
                             cornerRadius: 24,
@@ -299,7 +303,7 @@ struct JoinView: View {
                     Spacer()
                 }
             }
-            .aspectRatio(16 / 9, contentMode: .fit)
+            .aspectRatio(remoteVideoAspectRatio, contentMode: .fit)
             .frame(maxWidth: 1100)
             .overlay {
                 RoundedRectangle(
