@@ -10,6 +10,12 @@ import CoreImage
 import UIKit
 #endif
 
+// Shared queue for all direct RTCPeerConnection/RTCVideoTrack calls; WebRTC's native
+// framework asserts on internal thread checks when its objects are touched from the
+// main thread, so every call site (negotiation, track reads, renderer attach) must
+// funnel through here instead.
+let webrtcAccessQueue = DispatchQueue(label: "com.blinkcast.webrtc.access", qos: .userInitiated)
+
 @MainActor
 final class WebRTCService: NSObject, ObservableObject {
     static let shared = WebRTCService()
@@ -52,7 +58,7 @@ final class WebRTCService: NSObject, ObservableObject {
 
     private let signalingService = SignalingService.shared
     // Native WebRTC calls run here instead of on the main actor so they can never block the UI thread.
-    private let webrtcQueue = DispatchQueue(label: "com.blinkcast.webrtc", qos: .userInitiated)
+    private let webrtcQueue = webrtcAccessQueue
     private let factory: RTCPeerConnectionFactory
     private var peerConnection: RTCPeerConnection?
     private var connectionGeneration = 0
@@ -781,23 +787,30 @@ final class WebRTCService: NSObject, ObservableObject {
         guard let peerConnection else { return }
         if remoteVideoTrack != nil { return }
 
-        if let receiverTrack = peerConnection.receivers
-            .compactMap({ $0.track as? RTCVideoTrack })
-            .first {
-            NSLog("BlinkCast attaching remote video track from receivers id=\(receiverTrack.trackId)")
-            setRemoteTrack(receiverTrack)
-            return
-        }
+        webrtcQueue.async { [weak self] in
+            let receiverTrack = peerConnection.receivers
+                .compactMap { $0.track as? RTCVideoTrack }
+                .first
+            let transceiverTrack = receiverTrack == nil
+                ? peerConnection.transceivers.compactMap { $0.receiver.track as? RTCVideoTrack }.first
+                : nil
+            let receiverCount = peerConnection.receivers.count
+            let transceiverCount = peerConnection.transceivers.count
 
-        if let transceiverTrack = peerConnection.transceivers
-            .compactMap({ $0.receiver.track as? RTCVideoTrack })
-            .first {
-            NSLog("BlinkCast attaching remote video track from transceivers id=\(transceiverTrack.trackId)")
-            setRemoteTrack(transceiverTrack)
-            return
-        }
+            Task { @MainActor in
+                guard let self else { return }
 
-        NSLog("BlinkCast no remote video track found yet receivers=\(peerConnection.receivers.count) transceivers=\(peerConnection.transceivers.count)")
+                if let receiverTrack {
+                    NSLog("BlinkCast attaching remote video track from receivers id=\(receiverTrack.trackId)")
+                    self.setRemoteTrack(receiverTrack)
+                } else if let transceiverTrack {
+                    NSLog("BlinkCast attaching remote video track from transceivers id=\(transceiverTrack.trackId)")
+                    self.setRemoteTrack(transceiverTrack)
+                } else {
+                    NSLog("BlinkCast no remote video track found yet receivers=\(receiverCount) transceivers=\(transceiverCount)")
+                }
+            }
+        }
     }
 
     private func fail(_ message: String) {
@@ -966,9 +979,9 @@ final class BlinkMacRTCVideoView: NSView, RTCVideoRenderer {
         layer?.contentsGravity = .resizeAspect
     }
 
-    @objc func setSize(_ size: CGSize) {}
+    @objc nonisolated func setSize(_ size: CGSize) {}
 
-    @objc func renderFrame(_ frame: RTCVideoFrame?) {
+    @objc nonisolated func renderFrame(_ frame: RTCVideoFrame?) {
         guard let frame else {
             NSLog("BlinkCast macOS renderer received nil video frame")
             return
@@ -1123,9 +1136,12 @@ struct BlinkRemoteVideoView: NSViewRepresentable {
     ) {
         if context.coordinator.attachedTrack !== track {
             NSLog("BlinkCast macOS renderer attaching track id=\(track.trackId)")
-            context.coordinator.attachedTrack?.remove(view)
-            track.add(view)
+            let previousTrack = context.coordinator.attachedTrack
             context.coordinator.attachedTrack = track
+            webrtcAccessQueue.async {
+                previousTrack?.remove(view)
+                track.add(view)
+            }
         }
     }
 
@@ -1133,7 +1149,10 @@ struct BlinkRemoteVideoView: NSViewRepresentable {
         _ view: BlinkMacRTCVideoView,
         coordinator: Coordinator
     ) {
-        coordinator.attachedTrack?.remove(view)
+        let attachedTrack = coordinator.attachedTrack
+        webrtcAccessQueue.async {
+            attachedTrack?.remove(view)
+        }
     }
 }
 #else
@@ -1159,9 +1178,12 @@ struct BlinkRemoteVideoView: UIViewRepresentable {
         context: Context
     ) {
         if context.coordinator.attachedTrack !== track {
-            context.coordinator.attachedTrack?.remove(view)
-            track.add(view)
+            let previousTrack = context.coordinator.attachedTrack
             context.coordinator.attachedTrack = track
+            webrtcAccessQueue.async {
+                previousTrack?.remove(view)
+                track.add(view)
+            }
         }
     }
 
@@ -1169,7 +1191,10 @@ struct BlinkRemoteVideoView: UIViewRepresentable {
         _ view: RTCMTLVideoView,
         coordinator: Coordinator
     ) {
-        coordinator.attachedTrack?.remove(view)
+        let attachedTrack = coordinator.attachedTrack
+        webrtcAccessQueue.async {
+            attachedTrack?.remove(view)
+        }
     }
 }
 #endif
