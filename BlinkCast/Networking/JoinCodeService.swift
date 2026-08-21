@@ -64,7 +64,7 @@ final class JoinCodeService: ObservableObject {
     ) async -> Bool {
         let roomID = name.trimmingCharacters(
             in: .whitespacesAndNewlines
-        )
+        ).lowercased()
 
         guard !roomID.isEmpty else {
             joinState = .failed("Enter a Room ID.")

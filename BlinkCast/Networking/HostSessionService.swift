@@ -30,9 +30,11 @@ final class HostSessionService: ObservableObject {
         requestedRoomID: String,
         password: String
     ) async -> Bool {
+        NSLog("BlinkCast HOST startSession signalURL=\(signalURL) requestedRoom=\(requestedRoomID.isEmpty ? "<empty>" : requestedRoomID) passwordPresent=\(!password.isEmpty)")
         let normalizedSignalURL = normalizeSignalURL(signalURL)
 
         guard let normalizedSignalURL else {
+            NSLog("BlinkCast HOST ERROR signal URL normalization failed")
             state = .failed(
                 "Enter a valid signaling URL beginning with ws://, wss://, http://, or https://."
             )
@@ -41,19 +43,21 @@ final class HostSessionService: ObservableObject {
 
         let trimmedRoomID = requestedRoomID.trimmingCharacters(
             in: .whitespacesAndNewlines
-        )
+        ).lowercased()
 
         let roomID = trimmedRoomID.isEmpty
             ? "blink-\(UUID().uuidString.lowercased().prefix(8))"
             : trimmedRoomID
 
         state = .publishing
+        NSLog("BlinkCast HOST registering room=\(roomID) normalizedSignalURL=\(normalizedSignalURL)")
 
         do {
             let code = try await registerCode(
                 signalURL: normalizedSignalURL,
                 roomID: roomID
             )
+            NSLog("BlinkCast HOST register code succeeded code=\(code)")
 
             if !trimmedRoomID.isEmpty && !password.isEmpty {
                 guard password.count >= 4 else {
@@ -65,10 +69,32 @@ final class HostSessionService: ObservableObject {
                     roomID: roomID,
                     password: password
                 )
+                NSLog("BlinkCast HOST password room registration succeeded")
             }
 
             sessionCode = code
             activeRoomID = roomID
+            let sharedDefaults = UserDefaults(
+                suiteName: "group.JaysApps.BlinkCast"
+            )
+            NSLog("BlinkCast HOST App Group available=\(sharedDefaults != nil)")
+            sharedDefaults?.set(
+                normalizedSignalURL,
+                forKey: "signalURL"
+            )
+            sharedDefaults?.set(roomID, forKey: "roomID")
+            NSLog("BlinkCast HOST App Group wrote signalURL=\(normalizedSignalURL) roomID=\(roomID)")
+
+            #if os(iOS)
+            NSLog("BlinkCast iOS host room ready for broadcast extension")
+            sharedDefaults?.set(
+                "host-broadcast-\(UUID().uuidString.lowercased().prefix(8))",
+                forKey: "clientID"
+            )
+            NSLog("BlinkCast HOST App Group wrote broadcast clientID")
+            state = .ready
+            return true
+            #else
             state = .connecting
 
             signalingService.connect(
@@ -78,7 +104,9 @@ final class HostSessionService: ObservableObject {
             )
 
             return true
+            #endif
         } catch {
+            NSLog("BlinkCast HOST ERROR startSession failed error=\(error.localizedDescription)")
             sessionCode = "-----"
             activeRoomID = ""
             state = .failed(error.localizedDescription)
@@ -132,6 +160,7 @@ final class HostSessionService: ObservableObject {
         signalURL: String,
         roomID: String
     ) async throws -> String {
+        NSLog("BlinkCast HOST POST /register room=\(roomID)")
         let object = try await postJSON(
             path: "/register",
             payload: [
@@ -156,6 +185,7 @@ final class HostSessionService: ObservableObject {
         roomID: String,
         password: String
     ) async throws {
+        NSLog("BlinkCast HOST POST /register-room room=\(roomID)")
         _ = try await postJSON(
             path: "/register-room",
             payload: [
@@ -171,6 +201,7 @@ final class HostSessionService: ObservableObject {
         path: String,
         payload: [String: Any]
     ) async throws -> [String: Any] {
+        NSLog("BlinkCast HOST HTTP request path=\(path)")
         guard let url = URL(string: codeServiceURL + path) else {
             throw HostError.invalidServiceURL
         }
@@ -188,10 +219,12 @@ final class HostSessionService: ObservableObject {
         let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
+            NSLog("BlinkCast HOST ERROR response was not HTTP path=\(path)")
             throw HostError.invalidResponse
         }
 
         guard (200...299).contains(httpResponse.statusCode) else {
+            NSLog("BlinkCast HOST ERROR HTTP status=\(httpResponse.statusCode) path=\(path) body=\(String(data: data, encoding: .utf8) ?? "<non-text>")")
             throw HostError.server(extractErrorMessage(from: data))
         }
 
@@ -199,6 +232,7 @@ final class HostSessionService: ObservableObject {
             let object = try JSONSerialization.jsonObject(with: data)
                 as? [String: Any]
         else {
+            NSLog("BlinkCast HOST ERROR response JSON was not dictionary path=\(path)")
             throw HostError.invalidResponse
         }
 

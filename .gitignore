@@ -1,0 +1,8 @@
+.DS_Store
+*.log
+build/
+DerivedData/
+.compile
+node_modules/
+# Separate git repository (own remote/history), not part of BlinkCast.
+Windows/

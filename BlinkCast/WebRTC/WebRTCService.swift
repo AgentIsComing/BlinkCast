@@ -51,8 +51,12 @@ final class WebRTCService: NSObject, ObservableObject {
     @Published private(set) var lastError: String?
 
     private let signalingService = SignalingService.shared
+    // Native WebRTC calls run here instead of on the main actor so they can never block the UI thread.
+    private let webrtcQueue = DispatchQueue(label: "com.blinkcast.webrtc", qos: .userInitiated)
     private let factory: RTCPeerConnectionFactory
     private var peerConnection: RTCPeerConnection?
+    private var connectionGeneration = 0
+    private var negotiationTimeoutTask: Task<Void, Never>?
     private var pendingRemoteCandidates: [RTCIceCandidate] = []
     private var pendingLocalCandidates: [[String: Any]] = []
     private var remoteClientID: String?
@@ -64,8 +68,10 @@ final class WebRTCService: NSObject, ObservableObject {
     #if os(iOS) || os(macOS)
     private var cameraCaptureService: CameraCaptureService?
     #endif
-    #if os(macOS)
+    #if os(iOS) || os(macOS)
     private var screenCaptureService: ScreenCaptureService?
+    #endif
+    #if os(macOS)
     private var captureSource: ScreenCaptureService.Source = .entireScreen
     #endif
 
@@ -136,24 +142,27 @@ final class WebRTCService: NSObject, ObservableObject {
 
         self.peerConnection = peerConnection
         state = .negotiating
+        scheduleNegotiationTimeout()
 
-        peerConnection.offer(for: constraints) { [weak self] description, error in
-            let errorMessage = error?.localizedDescription
-            let sdp = description?.sdp
-            Task { @MainActor in
-                guard let self else { return }
+        webrtcQueue.async {
+            peerConnection.offer(for: constraints) { [weak self] description, error in
+                let errorMessage = error?.localizedDescription
+                let sdp = description?.sdp
+                Task { @MainActor in
+                    guard let self else { return }
 
-                if let errorMessage {
-                    self.fail("Could not create WebRTC offer: \(errorMessage)")
-                    return
+                    if let errorMessage {
+                        self.fail("Could not create WebRTC offer: \(errorMessage)")
+                        return
+                    }
+
+                    guard let sdp else {
+                        self.fail("WebRTC did not return an offer.")
+                        return
+                    }
+
+                    self.setLocalDescriptionAndSendOffer(sdp: sdp)
                 }
-
-                guard let sdp else {
-                    self.fail("WebRTC did not return an offer.")
-                    return
-                }
-
-                self.setLocalDescriptionAndSendOffer(sdp: sdp)
             }
         }
     }
@@ -163,13 +172,6 @@ final class WebRTCService: NSObject, ObservableObject {
               peerConnection == nil else {
             return
         }
-
-        #if os(iOS)
-        guard publishCamera else {
-            fail("iPad can view screen shares. Enable Camera to host camera video.")
-            return
-        }
-        #endif
 
         state = .preparing
 
@@ -199,7 +201,8 @@ final class WebRTCService: NSObject, ObservableObject {
             with: videoSource,
             trackId: "blinkcast-screen"
         )
-        _ = peerConnection.add(videoTrack, streamIds: ["blinkcast-stream"])
+        let addedVideo = peerConnection.add(videoTrack, streamIds: ["blinkcast-stream"])
+        NSLog("BlinkCast host local screen track added=\(String(describing: addedVideo)) id=\(videoTrack.trackId)")
         screenCaptureService = ScreenCaptureService(videoSource: videoSource)
         localVideoTrack = videoTrack
 
@@ -222,27 +225,56 @@ final class WebRTCService: NSObject, ObservableObject {
 
         Task { @MainActor [weak self] in
             do {
-                try await self?.screenCaptureService?.start(
-                    source: self?.captureSource ?? .entireScreen,
-                    quality: self?.quality.captureQuality ?? .init(
-                        width: 2560,
-                        height: 1440,
-                        framesPerSecond: 30
-                    )
+                let quality = self?.quality.captureQuality ?? .init(
+                    width: 2560,
+                    height: 1440,
+                    framesPerSecond: 30
                 )
+                let source = self?.captureSource ?? .entireScreen
+                NSLog("BlinkCast host starting capture source=\(source.rawValue) quality=\(quality.width)x\(quality.height) @ \(quality.framesPerSecond)fps")
+                try await self?.screenCaptureService?.start(
+                    source: source,
+                    quality: quality
+                )
+                NSLog("BlinkCast host capture start completed")
             } catch {
+                NSLog("BlinkCast host capture start error: \(error.localizedDescription)")
                 self?.fail("Could not start screen capture: \(error.localizedDescription)")
             }
         }
         #endif
 
         #if os(iOS)
+        let videoSource = factory.videoSource()
+        let videoTrack = factory.videoTrack(
+            with: videoSource,
+            trackId: "blinkcast-screen"
+        )
+        _ = peerConnection.add(videoTrack, streamIds: ["blinkcast-stream"])
+        screenCaptureService = ScreenCaptureService(videoSource: videoSource)
+        localVideoTrack = videoTrack
+
+        if publishMicrophone {
+            let audioSource = factory.audioSource(with: nil)
+            let audioTrack = factory.audioTrack(
+                with: audioSource,
+                trackId: "blinkcast-microphone"
+            )
+            _ = peerConnection.add(
+                audioTrack,
+                streamIds: ["blinkcast-stream"]
+            )
+            localAudioTrack = audioTrack
+        }
+
         if publishCamera {
             addCameraTrack(to: peerConnection)
         }
+
         #endif
 
         state = .negotiating
+        scheduleNegotiationTimeout()
     }
 
     #if os(macOS)
@@ -263,6 +295,14 @@ final class WebRTCService: NSObject, ObservableObject {
         self.quality = quality
     }
 
+    #if os(iOS)
+    func prepareForBackgroundBroadcast() {
+        NSLog("BlinkCast preparing background broadcast handoff")
+        stop()
+        signalingService.disconnect()
+    }
+    #endif
+
     func setSharingPaused(_ paused: Bool) {
         sharingPaused = paused
         localVideoTrack?.isEnabled = !paused
@@ -276,6 +316,8 @@ final class WebRTCService: NSObject, ObservableObject {
     func stop() {
         reconnectTask?.cancel()
         reconnectTask = nil
+        negotiationTimeoutTask?.cancel()
+        negotiationTimeoutTask = nil
         peerConnection?.close()
         peerConnection = nil
         pendingRemoteCandidates.removeAll()
@@ -295,7 +337,7 @@ final class WebRTCService: NSObject, ObservableObject {
         peerConnectionState = "closed"
         iceConnectionState = "closed"
         lastError = nil
-        #if os(macOS)
+        #if os(iOS) || os(macOS)
         let captureService = screenCaptureService
         screenCaptureService = nil
         Task {
@@ -333,6 +375,8 @@ final class WebRTCService: NSObject, ObservableObject {
     }
 
     private func resetPeerConnectionForReconnect() {
+        negotiationTimeoutTask?.cancel()
+        negotiationTimeoutTask = nil
         peerConnection?.close()
         peerConnection = nil
         pendingRemoteCandidates.removeAll()
@@ -350,7 +394,7 @@ final class WebRTCService: NSObject, ObservableObject {
         }
         #endif
 
-        #if os(macOS)
+        #if os(iOS) || os(macOS)
         let captureService = screenCaptureService
         screenCaptureService = nil
         Task {
@@ -387,6 +431,8 @@ final class WebRTCService: NSObject, ObservableObject {
     private func makePeerConnectionConfiguration() -> RTCConfiguration {
         let configuration = RTCConfiguration()
         configuration.sdpSemantics = .unifiedPlan
+        configuration.bundlePolicy = .maxBundle
+        configuration.iceCandidatePoolSize = 1
         let configuredURLs = UserDefaults.standard.string(
             forKey: "blinkcast.iceServerURLs"
         )?
@@ -432,52 +478,64 @@ final class WebRTCService: NSObject, ObservableObject {
         guard let peerConnection else { return }
 
         let description = RTCSessionDescription(type: .offer, sdp: sdp)
-        peerConnection.setLocalDescription(description) { [weak self] error in
-            let errorMessage = error?.localizedDescription
-            Task { @MainActor in
-                guard let self else { return }
+        webrtcQueue.async {
+            peerConnection.setLocalDescription(description) { [weak self] error in
+                let errorMessage = error?.localizedDescription
+                Task { @MainActor in
+                    guard let self else { return }
 
-                if let errorMessage {
-                    self.fail("Could not set local WebRTC description: \(errorMessage)")
-                    return
+                    if let errorMessage {
+                        self.fail("Could not set local WebRTC description: \(errorMessage)")
+                        return
+                    }
+
+                    self.signalingService.sendSignal([
+                        "from": self.signalingService.currentClientID,
+                        "offer": [
+                            "type": "offer",
+                            "sdp": description.sdp
+                        ]
+                    ])
                 }
-
-                self.signalingService.sendSignal([
-                    "from": self.signalingService.currentClientID,
-                    "offer": [
-                        "type": "offer",
-                        "sdp": description.sdp
-                    ]
-                ])
             }
         }
     }
 
     private func handleSignal(_ data: [String: Any]) {
+        let target = data["to"] as? String ?? ""
+        let from = data["from"] as? String ?? ""
+        let keys = Array(data.keys).sorted().joined(separator: ",")
+        NSLog("BlinkCast WebRTC signal received keys=\(keys) from=\(from) to=\(target) role=\(signalingService.currentRole.rawValue)")
+
         if let target = data["to"] as? String,
            !target.isEmpty,
            target != signalingService.currentClientID {
+            NSLog("BlinkCast WebRTC signal ignored because target mismatch current=\(signalingService.currentClientID) messageTarget=\(target)")
             return
         }
 
         switch signalingService.currentRole {
-        case .viewer:
-            if let answer = data["answer"] as? [String: Any] {
-                handleAnswer(answer)
-            }
+            case .viewer:
+                if let answer = data["answer"] as? [String: Any] {
+                    NSLog("BlinkCast viewer processing answer payload")
+                    handleAnswer(answer)
+                }
 
-            if let candidate = data["candidate"] as? [String: Any] {
-                handleRemoteCandidate(candidate)
-            }
+                if let candidate = data["candidate"] as? [String: Any] {
+                    NSLog("BlinkCast viewer processing remote ICE candidate")
+                    handleRemoteCandidate(candidate)
+                }
 
-        case .host:
-            if let offer = data["offer"] as? [String: Any] {
-                handleOffer(offer, from: data["from"] as? String)
-            }
+            case .host:
+                if let offer = data["offer"] as? [String: Any] {
+                    NSLog("BlinkCast host processing offer payload from=\(from)")
+                    handleOffer(offer, from: from)
+                }
 
-            if let candidate = data["candidate"] as? [String: Any] {
-                handleRemoteCandidate(candidate)
-            }
+                if let candidate = data["candidate"] as? [String: Any] {
+                    NSLog("BlinkCast host processing remote ICE candidate")
+                    handleRemoteCandidate(candidate)
+                }
         }
     }
 
@@ -496,18 +554,20 @@ final class WebRTCService: NSObject, ObservableObject {
         }
 
         let description = RTCSessionDescription(type: .offer, sdp: sdp)
-        peerConnection.setRemoteDescription(description) { [weak self] error in
-            let errorMessage = error?.localizedDescription
-            Task { @MainActor in
-                guard let self else { return }
+        webrtcQueue.async {
+            peerConnection.setRemoteDescription(description) { [weak self] error in
+                let errorMessage = error?.localizedDescription
+                Task { @MainActor in
+                    guard let self else { return }
 
-                if let errorMessage {
-                    self.fail("Could not set the viewer offer: \(errorMessage)")
-                    return
+                    if let errorMessage {
+                        self.fail("Could not set the viewer offer: \(errorMessage)")
+                        return
+                    }
+
+                    self.createAndSendAnswer()
+                    self.flushPendingCandidates()
                 }
-
-                self.createAndSendAnswer()
-                self.flushPendingCandidates()
             }
         }
     }
@@ -520,23 +580,25 @@ final class WebRTCService: NSObject, ObservableObject {
             optionalConstraints: nil
         )
 
-        peerConnection.answer(for: constraints) { [weak self] description, error in
-            let errorMessage = error?.localizedDescription
-            let sdp = description?.sdp
-            Task { @MainActor in
-                guard let self else { return }
+        webrtcQueue.async {
+            peerConnection.answer(for: constraints) { [weak self] description, error in
+                let errorMessage = error?.localizedDescription
+                let sdp = description?.sdp
+                Task { @MainActor in
+                    guard let self else { return }
 
-                if let errorMessage {
-                    self.fail("Could not create WebRTC answer: \(errorMessage)")
-                    return
+                    if let errorMessage {
+                        self.fail("Could not create WebRTC answer: \(errorMessage)")
+                        return
+                    }
+
+                    guard let sdp else {
+                        self.fail("WebRTC did not return an answer.")
+                        return
+                    }
+
+                    self.setLocalDescriptionAndSendAnswer(sdp: sdp)
                 }
-
-                guard let sdp else {
-                    self.fail("WebRTC did not return an answer.")
-                    return
-                }
-
-                self.setLocalDescriptionAndSendAnswer(sdp: sdp)
             }
         }
     }
@@ -545,29 +607,31 @@ final class WebRTCService: NSObject, ObservableObject {
         guard let peerConnection else { return }
         let description = RTCSessionDescription(type: .answer, sdp: sdp)
 
-        peerConnection.setLocalDescription(description) { [weak self] error in
-            let errorMessage = error?.localizedDescription
-            Task { @MainActor in
-                guard let self else { return }
+        webrtcQueue.async {
+            peerConnection.setLocalDescription(description) { [weak self] error in
+                let errorMessage = error?.localizedDescription
+                Task { @MainActor in
+                    guard let self else { return }
 
-                if let errorMessage {
-                    self.fail("Could not set local WebRTC answer: \(errorMessage)")
-                    return
-                }
+                    if let errorMessage {
+                        self.fail("Could not set local WebRTC answer: \(errorMessage)")
+                        return
+                    }
 
-                var answer: [String: Any] = [
-                    "from": self.signalingService.currentClientID,
-                    "answer": [
-                        "type": "answer",
-                        "sdp": sdp
+                    var answer: [String: Any] = [
+                        "from": self.signalingService.currentClientID,
+                        "answer": [
+                            "type": "answer",
+                            "sdp": sdp
+                        ]
                     ]
-                ]
 
-                if let remoteClientID = self.remoteClientID {
-                    answer["to"] = remoteClientID
+                    if let remoteClientID = self.remoteClientID {
+                        answer["to"] = remoteClientID
+                    }
+
+                    self.signalingService.sendSignal(answer)
                 }
-
-                self.signalingService.sendSignal(answer)
             }
         }
     }
@@ -580,17 +644,20 @@ final class WebRTCService: NSObject, ObservableObject {
 
         let description = RTCSessionDescription(type: .answer, sdp: sdp)
 
-        peerConnection.setRemoteDescription(description) { [weak self] error in
-            let errorMessage = error?.localizedDescription
-            Task { @MainActor in
-                guard let self else { return }
+        webrtcQueue.async {
+            peerConnection.setRemoteDescription(description) { [weak self] error in
+                let errorMessage = error?.localizedDescription
+                Task { @MainActor in
+                    guard let self else { return }
 
-                if let errorMessage {
-                    self.fail("Could not set remote WebRTC description: \(errorMessage)")
-                    return
+                    if let errorMessage {
+                        self.fail("Could not set remote WebRTC description: \(errorMessage)")
+                        return
+                    }
+
+                    self.attachRemoteTrackIfAvailable()
+                    self.flushPendingCandidates()
                 }
-
-                self.flushPendingCandidates()
             }
         }
     }
@@ -627,11 +694,13 @@ final class WebRTCService: NSObject, ObservableObject {
             return
         }
 
-        peerConnection.add(candidate) { [weak self] error in
-            let errorMessage = error?.localizedDescription
-            guard let errorMessage else { return }
-            Task { @MainActor in
-                self?.fail("Could not add ICE candidate: \(errorMessage)")
+        webrtcQueue.async {
+            peerConnection.add(candidate) { [weak self] error in
+                let errorMessage = error?.localizedDescription
+                guard let errorMessage else { return }
+                Task { @MainActor in
+                    self?.fail("Could not add ICE candidate: \(errorMessage)")
+                }
             }
         }
     }
@@ -646,12 +715,14 @@ final class WebRTCService: NSObject, ObservableObject {
         let candidates = pendingRemoteCandidates
         pendingRemoteCandidates.removeAll()
 
-        for candidate in candidates {
-            peerConnection.add(candidate) { [weak self] error in
-                let errorMessage = error?.localizedDescription
-                guard let errorMessage else { return }
-                Task { @MainActor in
-                    self?.fail("Could not add queued ICE candidate: \(errorMessage)")
+        webrtcQueue.async {
+            for candidate in candidates {
+                peerConnection.add(candidate) { [weak self] error in
+                    let errorMessage = error?.localizedDescription
+                    guard let errorMessage else { return }
+                    Task { @MainActor in
+                        self?.fail("Could not add queued ICE candidate: \(errorMessage)")
+                    }
                 }
             }
         }
@@ -698,13 +769,65 @@ final class WebRTCService: NSObject, ObservableObject {
     }
 
     private func setRemoteTrack(_ track: RTCMediaStreamTrack?) {
-        guard let videoTrack = track as? RTCVideoTrack else { return }
+        guard let videoTrack = track as? RTCVideoTrack else {
+            NSLog("BlinkCast setRemoteTrack rejected non-video track type=\(String(describing: type(of: track)))")
+            return
+        }
+        NSLog("BlinkCast remote video track received id=\(videoTrack.trackId) enabled=\(videoTrack.isEnabled) existing=\(remoteVideoTrack != nil)")
         remoteVideoTrack = videoTrack
     }
 
+    private func attachRemoteTrackIfAvailable() {
+        guard let peerConnection else { return }
+        if remoteVideoTrack != nil { return }
+
+        if let receiverTrack = peerConnection.receivers
+            .compactMap({ $0.track as? RTCVideoTrack })
+            .first {
+            NSLog("BlinkCast attaching remote video track from receivers id=\(receiverTrack.trackId)")
+            setRemoteTrack(receiverTrack)
+            return
+        }
+
+        if let transceiverTrack = peerConnection.transceivers
+            .compactMap({ $0.receiver.track as? RTCVideoTrack })
+            .first {
+            NSLog("BlinkCast attaching remote video track from transceivers id=\(transceiverTrack.trackId)")
+            setRemoteTrack(transceiverTrack)
+            return
+        }
+
+        NSLog("BlinkCast no remote video track found yet receivers=\(peerConnection.receivers.count) transceivers=\(peerConnection.transceivers.count)")
+    }
+
     private func fail(_ message: String) {
+        negotiationTimeoutTask?.cancel()
+        negotiationTimeoutTask = nil
         lastError = message
         state = .failed(message)
+    }
+
+    private func scheduleNegotiationTimeout() {
+        negotiationTimeoutTask?.cancel()
+        connectionGeneration += 1
+        let generation = connectionGeneration
+
+        negotiationTimeoutTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: .seconds(25))
+            } catch {
+                return
+            }
+
+            guard let self,
+                  self.connectionGeneration == generation,
+                  self.state == .negotiating else {
+                return
+            }
+
+            NSLog("BlinkCast WebRTC negotiation timed out after 25s")
+            self.fail("Connection timed out. The other device did not respond.")
+        }
     }
 }
 
@@ -719,6 +842,7 @@ extension WebRTCService: RTCPeerConnectionDelegate {
         didAdd stream: RTCMediaStream
     ) {
         let track = stream.videoTracks.first
+        NSLog("BlinkCast peer connection didAdd stream tracks=\(stream.videoTracks.count) audio=\(stream.audioTracks.count)")
         Task { @MainActor in self.setRemoteTrack(track) }
     }
 
@@ -783,8 +907,13 @@ extension WebRTCService: RTCPeerConnectionDelegate {
             self.peerConnectionState = state
             switch newState {
             case .connected:
+                NSLog("BlinkCast peer connection connected; attempting remote-track attach")
+                self.negotiationTimeoutTask?.cancel()
+                self.negotiationTimeoutTask = nil
+                self.attachRemoteTrackIfAvailable()
                 self.state = .connected
             case .disconnected:
+                NSLog("BlinkCast peer connection disconnected;")
                 self.scheduleReconnect()
             case .failed:
                 self.fail("WebRTC connection failed.")
@@ -803,6 +932,7 @@ extension WebRTCService: RTCPeerConnectionDelegate {
         didStartReceivingOn transceiver: RTCRtpTransceiver
     ) {
         let track = transceiver.receiver.track
+        NSLog("BlinkCast peer connection started receiving on transceiver kind=\(transceiver.mediaType.rawValue) trackId=\(track?.trackId ?? "nil")")
         Task { @MainActor in self.setRemoteTrack(track) }
     }
 
@@ -812,6 +942,7 @@ extension WebRTCService: RTCPeerConnectionDelegate {
         streams: [RTCMediaStream]
     ) {
         let track = rtpReceiver.track
+        NSLog("BlinkCast peer connection added receiver trackId=\(track?.trackId ?? "nil") streams=\(streams.count)")
         Task { @MainActor in self.setRemoteTrack(track) }
     }
 }
@@ -835,16 +966,20 @@ final class BlinkMacRTCVideoView: NSView, RTCVideoRenderer {
         layer?.contentsGravity = .resizeAspect
     }
 
-    nonisolated func setSize(_ size: CGSize) {}
+    @objc func setSize(_ size: CGSize) {}
 
-    nonisolated func renderFrame(_ frame: RTCVideoFrame?) {
-        guard let frame,
-              let rtcBuffer = frame.buffer as? RTCCVPixelBuffer else {
+    @objc func renderFrame(_ frame: RTCVideoFrame?) {
+        guard let frame else {
+            NSLog("BlinkCast macOS renderer received nil video frame")
             return
         }
 
-        let pixelBuffer = rtcBuffer.pixelBuffer
-        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+        guard let pixelBuffer = makeRenderablePixelBuffer(from: frame.buffer) else {
+            NSLog("BlinkCast macOS renderer could not convert frame buffer type=\(type(of: frame.buffer))")
+            return
+        }
+
+        var ciImage = CIImage(cvPixelBuffer: pixelBuffer)
         let rect = CGRect(
             x: 0,
             y: 0,
@@ -852,17 +987,117 @@ final class BlinkMacRTCVideoView: NSView, RTCVideoRenderer {
             height: CVPixelBufferGetHeight(pixelBuffer)
         )
 
-        guard let cgImage = ciContext.createCGImage(ciImage, from: rect) else {
+        switch frame.rotation {
+        case ._90:
+            ciImage = ciImage.oriented(.right)
+        case ._180:
+            ciImage = ciImage.oriented(.down)
+        case ._270:
+            ciImage = ciImage.oriented(.left)
+        default:
+            break
+        }
+
+        let outputRect = ciImage.extent.integral
+        guard let cgImage = ciContext.createCGImage(ciImage, from: outputRect) else {
+            NSLog("BlinkCast macOS renderer could not create CGImage size=\(rect.size)")
             return
         }
 
         if !didRenderFrame {
             didRenderFrame = true
-            NSLog("BlinkCast rendered first remote video frame")
+            NSLog("BlinkCast rendered first remote video frame size=\(rect.size) rotation=\(frame.rotation.rawValue)")
         }
 
         DispatchQueue.main.async { [weak self] in
             self?.layer?.contents = cgImage
+        }
+    }
+
+    private nonisolated func makeRenderablePixelBuffer(
+        from buffer: RTCVideoFrameBuffer
+    ) -> CVPixelBuffer? {
+        if let cvPixelBuffer = buffer as? RTCCVPixelBuffer {
+            return cvPixelBuffer.pixelBuffer
+        }
+
+        let i420Buffer = buffer.toI420()
+        let width = Int(i420Buffer.width)
+        let height = Int(i420Buffer.height)
+
+        var pixelBuffer: CVPixelBuffer?
+        let attributes: [CFString: Any] = [
+            kCVPixelBufferCGImageCompatibilityKey: true,
+            kCVPixelBufferCGBitmapContextCompatibilityKey: true
+        ]
+
+        let status = CVPixelBufferCreate(
+            kCFAllocatorDefault,
+            width,
+            height,
+            kCVPixelFormatType_420YpCbCr8Planar,
+            attributes as CFDictionary,
+            &pixelBuffer
+        )
+
+        guard status == kCVReturnSuccess,
+              let pixelBuffer else {
+            NSLog("BlinkCast macOS renderer failed to allocate pixel buffer status=\(status)")
+            return nil
+        }
+
+        CVPixelBufferLockBaseAddress(pixelBuffer, [])
+        defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, []) }
+
+        guard CVPixelBufferGetPlaneCount(pixelBuffer) == 3 else {
+            NSLog("BlinkCast macOS renderer expected 3 planes but got \(CVPixelBufferGetPlaneCount(pixelBuffer))")
+            return nil
+        }
+
+        copyPlane(
+            from: i420Buffer.dataY,
+            sourceStride: Int(i420Buffer.strideY),
+            to: CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 0),
+            destinationStride: CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, 0),
+            width: width,
+            height: height
+        )
+
+        copyPlane(
+            from: i420Buffer.dataU,
+            sourceStride: Int(i420Buffer.strideU),
+            to: CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 1),
+            destinationStride: CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, 1),
+            width: (width + 1) / 2,
+            height: (height + 1) / 2
+        )
+
+        copyPlane(
+            from: i420Buffer.dataV,
+            sourceStride: Int(i420Buffer.strideV),
+            to: CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 2),
+            destinationStride: CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, 2),
+            width: (width + 1) / 2,
+            height: (height + 1) / 2
+        )
+
+        return pixelBuffer
+    }
+
+    private nonisolated func copyPlane(
+        from source: UnsafePointer<UInt8>,
+        sourceStride: Int,
+        to destination: UnsafeMutableRawPointer?,
+        destinationStride: Int,
+        width: Int,
+        height: Int
+    ) {
+        guard let destination else { return }
+
+        for row in 0..<height {
+            let sourceRow = source.advanced(by: row * sourceStride)
+            let destinationRow = destination.advanced(by: row * destinationStride)
+            destinationRow.copyMemory(from: sourceRow, byteCount: width)
         }
     }
 }
@@ -887,6 +1122,7 @@ struct BlinkRemoteVideoView: NSViewRepresentable {
         context: Context
     ) {
         if context.coordinator.attachedTrack !== track {
+            NSLog("BlinkCast macOS renderer attaching track id=\(track.trackId)")
             context.coordinator.attachedTrack?.remove(view)
             track.add(view)
             context.coordinator.attachedTrack = track

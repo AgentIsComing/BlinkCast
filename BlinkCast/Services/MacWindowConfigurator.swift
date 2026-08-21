@@ -15,7 +15,7 @@ struct MacWindowConfigurator: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        
+        configureWindow(from: nsView)
     }
 
     private func configureWindow(from view: NSView) {
@@ -34,7 +34,7 @@ struct MacWindowConfigurator: NSViewRepresentable {
 
         window.isMovable = true
         window.isMovableByWindowBackground = true
-        window.isRestorable = false
+        window.isRestorable = true
         window.restorationClass = nil
         window.level = .normal
         window.collectionBehavior = [.managed, .fullScreenPrimary]
@@ -47,7 +47,6 @@ struct MacWindowConfigurator: NSViewRepresentable {
 
         if let toolbar = window.toolbar {
             toolbar.isVisible = false
-            toolbar.showsBaselineSeparator = false
         }
     }
 }

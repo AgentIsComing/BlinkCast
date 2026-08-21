@@ -18,6 +18,9 @@ struct ContentView: View {
 }
 
 struct MainAppView: View {
+    @StateObject private var webRTCService = WebRTCService.shared
+    @StateObject private var signalingService = SignalingService.shared
+
     enum Destination: String, CaseIterable, Identifiable {
         case home
         case host
@@ -73,6 +76,15 @@ struct MainAppView: View {
         }
         .background(BlinkBackground())
         .ignoresSafeArea(edges: .top)
+        .onChange(of: webRTCService.remoteVideoTrack) { _, track in
+            guard track != nil,
+                  signalingService.currentRole == .viewer else {
+                return
+            }
+            if selection != .join {
+                selection = .join
+            }
+        }
     }
 
     // MARK: - Custom Title Bar

@@ -40,7 +40,7 @@ function ttl(env: Env): number {
 
 function normalizeRoomId(value: unknown): string | null {
   if (typeof value !== "string") return null;
-  const roomId = value.trim();
+  const roomId = value.trim().toLowerCase();
   if (!roomId || roomId.length > 128) return null;
   return roomId;
 }

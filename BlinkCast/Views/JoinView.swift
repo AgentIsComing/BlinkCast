@@ -48,7 +48,8 @@ struct JoinView: View {
             }
         }
         .onDisappear {
-            if !isConnected {
+            if signalingService.currentRole == .viewer,
+               !isConnected {
                 webRTCService.stop()
             }
         }
@@ -211,6 +212,10 @@ struct JoinView: View {
                 text: $roomName
             )
             .textFieldStyle(.roundedBorder)
+            #if os(iOS)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled(true)
+            #endif
 
             SecureField(
                 "Password",

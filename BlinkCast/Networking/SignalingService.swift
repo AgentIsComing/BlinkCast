@@ -58,10 +58,12 @@ final class SignalingService: NSObject, ObservableObject {
         roomID: String,
         role: Role
     ) {
+        NSLog("BlinkCast SIGNAL connect requested role=\(role.rawValue) room=\(roomID) url=\(signalURL)")
         disconnect()
         shouldReconnect = true
 
         guard var normalizedURL = normalizeSignalURL(signalURL) else {
+            NSLog("BlinkCast SIGNAL ERROR invalid URL")
             state = .failed("Invalid signaling URL.")
             return
         }
@@ -84,10 +86,16 @@ final class SignalingService: NSObject, ObservableObject {
         self.roomID = roomID
         self.role = role
         self.clientID = "\(role.rawValue)-\(UUID().uuidString.lowercased().prefix(8))"
+        NSLog("BlinkCast SIGNAL client identity created clientID=\(clientID)")
+        UserDefaults(suiteName: "group.JaysApps.BlinkCast")?.set(
+            clientID,
+            forKey: "clientID"
+        )
         reconnectAttempt = 0
 
         state = .connecting
         hostAvailable = false
+        NSLog("BlinkCast SIGNAL state=connecting websocketURL=\(normalizedURL)")
 
         let configuration = URLSessionConfiguration.default
         let session = URLSession(
@@ -101,11 +109,13 @@ final class SignalingService: NSObject, ObservableObject {
         let task = session.webSocketTask(with: normalizedURL)
         webSocketTask = task
         task.resume()
+        NSLog("BlinkCast SIGNAL websocket task resumed")
 
         receiveNextMessage()
     }
 
     func disconnect() {
+        NSLog("BlinkCast SIGNAL disconnect state=\(state) room=\(roomID) clientID=\(clientID)")
         shouldReconnect = false
         reconnectTask?.cancel()
         reconnectTask = nil
@@ -153,6 +163,7 @@ final class SignalingService: NSObject, ObservableObject {
             let webSocketTask,
             JSONSerialization.isValidJSONObject(payload)
         else {
+            NSLog("BlinkCast SIGNAL ERROR send skipped socketPresent=\(webSocketTask != nil) validJSON=\(JSONSerialization.isValidJSONObject(payload)) payloadType=\(payload["type"] as? String ?? "unknown")")
             return
         }
 
@@ -165,14 +176,17 @@ final class SignalingService: NSObject, ObservableObject {
 
             webSocketTask.send(.string(string)) { [weak self] error in
                 guard let error else {
+                    NSLog("BlinkCast SIGNAL sent type=\(payload["type"] as? String ?? "unknown")")
                     return
                 }
 
+                NSLog("BlinkCast SIGNAL ERROR send failed type=\(payload["type"] as? String ?? "unknown") error=\(error.localizedDescription)")
                 Task { @MainActor in
                     self?.state = .failed(error.localizedDescription)
                 }
             }
         } catch {
+            NSLog("BlinkCast SIGNAL ERROR JSON serialization failed error=\(error.localizedDescription)")
             state = .failed(error.localizedDescription)
         }
     }
@@ -189,6 +203,7 @@ final class SignalingService: NSObject, ObservableObject {
 
             switch result {
             case .success(let message):
+                NSLog("BlinkCast SIGNAL received websocket message")
                 Task { @MainActor in
                     guard self.webSocketTask === webSocketTask else {
                         return
@@ -198,6 +213,7 @@ final class SignalingService: NSObject, ObservableObject {
                 }
 
             case .failure(let error):
+                NSLog("BlinkCast SIGNAL ERROR receive failed error=\(error.localizedDescription)")
                 Task { @MainActor in
                     guard self.webSocketTask === webSocketTask else {
                         return
@@ -209,6 +225,7 @@ final class SignalingService: NSObject, ObservableObject {
     }
 
     private func handleTransportFailure(_ error: Error) {
+        NSLog("BlinkCast SIGNAL transport failure reconnect=\(shouldReconnect) error=\(error.localizedDescription)")
         guard shouldReconnect else {
             state = .failed(error.localizedDescription)
             return
@@ -278,11 +295,15 @@ final class SignalingService: NSObject, ObservableObject {
             let dictionary = object as? [String: Any],
             let type = dictionary["type"] as? String
         else {
+            NSLog("BlinkCast SIGNAL ERROR received invalid JSON message")
             return
         }
 
+        NSLog("BlinkCast SIGNAL handling message type=\(type)")
+
         switch type {
         case "joined":
+            NSLog("BlinkCast SIGNAL joined hostAvailable=\(dictionary["hostAvailable"] as? Bool ?? false)")
             state = .joined
 
             if let available = dictionary["hostAvailable"] as? Bool {
@@ -294,6 +315,7 @@ final class SignalingService: NSObject, ObservableObject {
             }
 
         case "host-available":
+            NSLog("BlinkCast SIGNAL host-available")
             hostAvailable = true
             state = .joined
 

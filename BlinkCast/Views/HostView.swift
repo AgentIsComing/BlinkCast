@@ -100,18 +100,10 @@ struct HostView: View {
             hostService.updateFromSignaling()
             webRTCService.signalingDidUpdate()
 
-            if hostService.state == .ready {
-                sessionCode = hostService.sessionCode
-
-                withAnimation(
-                    .spring(
-                        response: 0.35,
-                        dampingFraction: 0.84
-                    )
-                ) {
-                    isHosting = true
-                }
-            }
+            showLiveHostIfReady()
+        }
+        .onChange(of: hostService.state) { _, _ in
+            showLiveHostIfReady()
         }
     }
 
@@ -352,6 +344,10 @@ struct HostView: View {
                     text: $roomName
                 )
                 .textFieldStyle(.roundedBorder)
+                #if os(iOS)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled(true)
+                #endif
 
                 SecureField(
                     "Room password (optional, 4+ characters)",
@@ -433,7 +429,7 @@ struct HostView: View {
         #if os(macOS)
         return "Preparing Screen Capture"
         #else
-        return "Preparing Camera"
+        return "Waiting for Screen Share"
         #endif
     }
 
@@ -441,9 +437,27 @@ struct HostView: View {
         #if os(macOS)
         return "Screen Recording permission is required to publish video."
         #else
-        return "Camera permission is required to publish video."
+        return "Allow the system broadcast prompt to begin sharing your iPad screen."
         #endif
     }
+
+    #if os(iOS)
+    private var iOSScreenShareStatus: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "rectangle.inset.filled.and.person.filled")
+                .font(.system(size: 50))
+
+            Text("Screen Share Runs in the Background")
+                .font(.title2.bold())
+
+            Text("The live preview appears on the connected viewer. You can leave BlinkCast and keep sharing.")
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+        }
+        .foregroundStyle(.white)
+        .padding(28)
+    }
+    #endif
 
     #if os(macOS)
     private func captureSource(
@@ -606,6 +620,9 @@ struct HostView: View {
             .fill(Color.black)
             .aspectRatio(16 / 9, contentMode: .fit)
 
+            #if os(iOS)
+            iOSScreenShareStatus
+            #else
             if let track = webRTCService.localVideoTrack {
                 BlinkRemoteVideoView(track: track)
             } else {
@@ -623,6 +640,7 @@ struct HostView: View {
                 }
                 .foregroundStyle(.white)
             }
+            #endif
         }
         .overlay {
             RoundedRectangle(
@@ -673,6 +691,29 @@ struct HostView: View {
                     ? "play.fill"
                     : "pause.fill"
             )
+
+            #if os(iOS)
+            VStack(spacing: 6) {
+                BroadcastPickerView(
+                    preferredExtension: "JaysApps.BlinkCast.Broadcast"
+                )
+                .frame(width: 64, height: 64)
+                .background(.tint.opacity(0.16), in: RoundedRectangle(cornerRadius: 12))
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                        NSLog("BlinkCast requesting automatic screen-share prompt after session start")
+                        NotificationCenter.default.post(
+                            name: Notification.Name("BlinkCast.StartScreenShare"),
+                            object: nil
+                        )
+                    }
+                }
+
+                Text("Start Screen Share")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            #endif
         }
     }
 
@@ -771,6 +812,7 @@ struct HostView: View {
     }
 
     private func startSession() async {
+        NSLog("BlinkCast host start requested")
         viewerCount = 0
         sessionCode = "-----"
         webRTCService.setMediaOptions(
@@ -790,10 +832,27 @@ struct HostView: View {
         )
 
         if !started {
+            NSLog("BlinkCast host session creation failed")
             return
         }
 
+        NSLog("BlinkCast host session created code=\(hostService.sessionCode)")
         sessionCode = hostService.sessionCode
+    }
+
+    private func showLiveHostIfReady() {
+        guard hostService.state == .ready else { return }
+        NSLog("BlinkCast host live controls are ready")
+        sessionCode = hostService.sessionCode
+
+        withAnimation(
+            .spring(
+                response: 0.35,
+                dampingFraction: 0.84
+            )
+        ) {
+            isHosting = true
+        }
     }
 
     private func endSession() {
