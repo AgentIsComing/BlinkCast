@@ -147,6 +147,23 @@ final class WebRTCService: NSObject, ObservableObject {
         }
 
         self.peerConnection = peerConnection
+
+        // Unified Plan ignores the legacy OfferToReceive* constraints, so the
+        // viewer must add explicit recvonly transceivers or its offer carries
+        // no media sections and negotiation stalls until it times out.
+        let receiveAudio = UserDefaults.standard.bool(
+            forKey: "blinkcast.receiveAudio"
+        )
+        let transceiverInit = RTCRtpTransceiverInit()
+        transceiverInit.direction = .recvOnly
+        peerConnection.addTransceiver(of: .video, init: transceiverInit)
+
+        if receiveAudio {
+            let audioTransceiverInit = RTCRtpTransceiverInit()
+            audioTransceiverInit.direction = .recvOnly
+            peerConnection.addTransceiver(of: .audio, init: audioTransceiverInit)
+        }
+
         state = .negotiating
         scheduleNegotiationTimeout()
 
