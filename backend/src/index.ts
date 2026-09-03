@@ -343,13 +343,19 @@ export class Room {
       return;
     }
 
-    const hasHost = this.findRole("host") !== null;
-    if (role === "host" && hasHost) {
-      webSocket.send(JSON.stringify({ type: "error", message: "A host is already connected." }));
-      webSocket.close(1008, "Host already connected");
-      return;
+    const existingHost = this.findRole("host");
+    if (role === "host" && existingHost) {
+      // A reconnecting host reclaims its own slot instead of being rejected.
+      if (this.info(existingHost)?.clientId === clientId) {
+        try { existingHost.close(1000, "Host reconnected"); } catch { /* already closed */ }
+      } else {
+        webSocket.send(JSON.stringify({ type: "error", message: "A host is already connected." }));
+        webSocket.close(1008, "Host already connected");
+        return;
+      }
     }
 
+    const hasHost = this.findRole("host") !== null;
     webSocket.serializeAttachment({ role, roomId, clientId } satisfies ClientInfo);
     webSocket.send(JSON.stringify({ type: "joined", hostAvailable: role === "host" || hasHost }));
     if (role === "host") {
@@ -361,7 +367,7 @@ export class Room {
   }
 
   private sockets(): WebSocket[] {
-    return this.state.getWebSockets();
+    return this.state.getWebSockets().filter((socket) => socket.readyState === WebSocket.OPEN);
   }
 
   private info(webSocket: WebSocket): ClientInfo | null {

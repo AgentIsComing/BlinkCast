@@ -417,6 +417,17 @@ extension SignalingService: URLSessionWebSocketDelegate {
             let message = reason.flatMap {
                 String(data: $0, encoding: .utf8)
             } ?? "Signaling connection closed (\(closeCode.rawValue))."
+
+            // A policy violation means the server rejected this join outright,
+            // so retrying with the same identity can never succeed.
+            guard closeCode != .policyViolation else {
+                self.shouldReconnect = false
+                self.reconnectTask?.cancel()
+                self.reconnectTask = nil
+                self.state = .failed(message)
+                return
+            }
+
             self.scheduleReconnect(message: message)
         }
     }
