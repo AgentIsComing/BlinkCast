@@ -2,6 +2,7 @@ export interface Env {
   ROOMS: DurableObjectNamespace;
   CODES: DurableObjectNamespace;
   ROOM_TTL_SECONDS: string;
+  HOST_TOKEN_SECRET?: string;
 }
 
 type Role = "host" | "viewer";
@@ -65,6 +66,20 @@ async function hashPassword(password: string): Promise<string> {
     .join("");
 }
 
+function hostTokenSecret(env: Env): string {
+  return env.HOST_TOKEN_SECRET || "blinkcast-host-token";
+}
+
+// Derived rather than stored so the room durable object can verify a host
+// token on its own, without a lookup back into the code registry.
+async function hostTokenFor(roomId: string, secret: string): Promise<string> {
+  const bytes = new TextEncoder().encode(`${secret}:${roomId}`);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 async function readJSON(request: Request): Promise<Record<string, unknown>> {
   try {
     const value = await request.json();
@@ -101,7 +116,10 @@ export default {
       const roomId = normalizeRoomId(url.searchParams.get("roomId"));
       if (!roomId) return json({ error: "roomId is required." }, 400);
       const id = env.ROOMS.idFromName(roomId);
-      return env.ROOMS.get(id).fetch(request);
+      // The room verifies host tokens without its own access to the secret.
+      const upgrade = new Request(request);
+      upgrade.headers.set("x-blinkcast-host-token", await hostTokenFor(roomId, hostTokenSecret(env)));
+      return env.ROOMS.get(id).fetch(upgrade);
     }
 
     if (request.method !== "POST") {
@@ -146,7 +164,7 @@ export default {
         if (existing.ok) break;
         code = randomCode();
       }
-      return json({ code, roomId, wsUrl });
+      return json({ code, roomId, wsUrl, hostToken: await hostTokenFor(roomId, hostTokenSecret(env)) });
     }
 
     if (url.pathname === "/register-room") {
@@ -175,7 +193,7 @@ export default {
         })
       );
       if (!response.ok) return json({ error: "Could not create room code." }, 503);
-      return json({ code, roomId, wsUrl });
+      return json({ code, roomId, wsUrl, hostToken: await hostTokenFor(roomId, hostTokenSecret(env)) });
     }
 
     if (url.pathname === "/resolve") {
@@ -264,12 +282,16 @@ export class CodeRegistry {
 }
 
 export class Room {
+  private expectedHostToken: string | null = null;
+
   constructor(private readonly state: DurableObjectState) {}
 
   async fetch(request: Request): Promise<Response> {
     if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
       return json({ error: "WebSocket upgrade required." }, 426);
     }
+
+    this.expectedHostToken = request.headers.get("x-blinkcast-host-token");
 
     const pair = new WebSocketPair();
     const client = pair[0];
@@ -340,6 +362,13 @@ export class Room {
     if (!role || !roomId || !clientId) {
       webSocket.send(JSON.stringify({ type: "error", message: "Invalid join message." }));
       webSocket.close(1008, "Invalid join message");
+      return;
+    }
+
+    const hostToken = typeof value.hostToken === "string" ? value.hostToken : null;
+    if (role === "host" && hostToken && this.expectedHostToken && hostToken !== this.expectedHostToken) {
+      webSocket.send(JSON.stringify({ type: "error", message: "Host authorization is not valid for this room." }));
+      webSocket.close(1008, "Invalid host authorization");
       return;
     }
 
