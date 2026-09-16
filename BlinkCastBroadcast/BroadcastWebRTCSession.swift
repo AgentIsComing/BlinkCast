@@ -36,22 +36,42 @@ final class BroadcastWebRTCSession: NSObject, @unchecked Sendable {
         let signalValue = defaults.string(forKey: "signalURL")
         let roomValue = defaults.string(forKey: "roomID")
         let clientValue = defaults.string(forKey: "clientID")
-        blinkExtensionLog("BlinkCast EXTENSION App Group read signalPresent=\(signalValue != nil) roomPresent=\(roomValue != nil) clientPresent=\(clientValue != nil)")
+        let nonceValue = defaults.string(forKey: "sessionNonce")
+        let bindingValue = defaults.string(forKey: "sessionSecuritySignature")
+        let expiryValue = defaults.object(forKey: "sessionExpiresAt") as? TimeInterval ?? 0
+        blinkExtensionLog("BlinkCast EXTENSION App Group read signalPresent=\(signalValue != nil) roomPresent=\(roomValue != nil) clientPresent=\(clientValue != nil) noncePresent=\(nonceValue != nil) bindingPresent=\(bindingValue != nil) expiresAt=\(expiryValue)")
         guard let signalURL = signalValue,
               let roomID = roomValue,
+              let clientIDValue = clientValue,
+              let nonceValue,
+              let bindingValue,
               let url = URL(string: signalURL) else {
-            blinkExtensionLog("BlinkCast EXTENSION ERROR App Group missing or invalid signalURL=\(signalValue ?? "nil") roomID=\(roomValue ?? "nil")")
+            blinkExtensionLog("BlinkCast EXTENSION ERROR App Group missing or invalid session config signalURL=\(signalValue ?? "nil") roomID=\(roomValue ?? "nil") clientID=\(clientValue ?? "nil") noncePresent=\(nonceValue != nil) bindingPresent=\(bindingValue != nil)")
             blinkExtensionLog("BlinkCast broadcast is missing shared session configuration")
+            return
+        }
+
+        let expiresAt = Date(timeIntervalSince1970: expiryValue)
+        guard expiresAt.timeIntervalSinceNow > 0 else {
+            blinkExtensionLog("BlinkCast EXTENSION ERROR App Group session expired room=\(roomID) clientID=\(clientIDValue) expiresAt=\(expiresAt.ISO8601Format())")
+            return
+        }
+
+        guard SessionSecurityBinding.isValid(
+            roomID: roomID,
+            clientID: clientIDValue,
+            nonce: nonceValue,
+            signatureToCheck: bindingValue,
+            expiresAt: expiresAt
+        ) else {
+            blinkExtensionLog("BlinkCast EXTENSION ERROR App Group session binding mismatch room=\(roomID) clientID=\(clientIDValue) expiresAt=\(expiresAt.ISO8601Format())")
             return
         }
 
         blinkExtensionLog("BlinkCast EXTENSION transport starting room=\(roomID) signalHost=\(url.host ?? "nil") signalPath=\(url.path)")
 
         self.roomID = roomID
-        if let savedClientID = defaults.string(forKey: "clientID"),
-           !savedClientID.isEmpty {
-            clientID = savedClientID
-        }
+        clientID = clientIDValue
         blinkExtensionLog("BlinkCast EXTENSION identity clientID=\(clientID)")
         let configuration = URLSessionConfiguration.default
         let session = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)

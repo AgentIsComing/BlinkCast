@@ -32,6 +32,7 @@ final class WebRTCService: NSObject, ObservableObject {
         case balanced
         case high
         case low
+        case ultraLowLatency
 
         #if os(macOS)
         var captureQuality: ScreenCaptureService.Quality {
@@ -42,6 +43,8 @@ final class WebRTCService: NSObject, ObservableObject {
                 return .init(width: 3840, height: 2160, framesPerSecond: 60)
             case .low:
                 return .init(width: 1280, height: 720, framesPerSecond: 24)
+            case .ultraLowLatency:
+                return .init(width: 1280, height: 720, framesPerSecond: 60)
             }
         }
         #endif
@@ -57,6 +60,7 @@ final class WebRTCService: NSObject, ObservableObject {
     @Published private(set) var lastError: String?
 
     private let signalingService = SignalingService.shared
+    private let diagnostics = NetworkDiagnostics.shared
     // Native WebRTC calls run here instead of on the main actor so they can never block the UI thread.
     private let webrtcQueue = webrtcAccessQueue
     private let factory: RTCPeerConnectionFactory
@@ -67,6 +71,8 @@ final class WebRTCService: NSObject, ObservableObject {
     private var pendingLocalCandidates: [[String: Any]] = []
     private var remoteClientID: String?
     private var reconnectTask: Task<Void, Never>?
+    private var iceRestartTask: Task<Void, Never>?
+    private var turnRefreshTask: Task<Void, Never>?
     private var publishMicrophone = false
     private var publishCamera = false
     private var quality: Quality = .balanced
@@ -89,18 +95,58 @@ final class WebRTCService: NSObject, ObservableObject {
         )
 
         super.init()
+        diagnostics.bind(to: self, signalingService: signalingService)
+        startTURNRefresh()
 
         signalingService.onSignal = { [weak self] envelope in
             self?.handleSignal(envelope.data)
         }
+        signalingService.onApprovalDecision = { [weak self] decision in
+            guard (decision["status"] as? String) == "approved" else { return }
+            self?.startViewerIfNeeded()
+        }
+    }
+
+    private func startTURNRefresh() {
+        turnRefreshTask?.cancel()
+        turnRefreshTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled {
+                await refreshTURNConfigurationIfAuthorized()
+                try? await Task.sleep(for: .seconds(12 * 60 * 60))
+            }
+        }
+    }
+
+    private func refreshTURNConfigurationIfAuthorized() async {
+        guard let token = signalingService.currentSessionToken,
+              let turnURL = URL(string: "https://blinkcast-signaling.jaydenrmaine.workers.dev"),
+              let config = await DiagnosticsReporter.shared.fetchTURNConfiguration(
+                  from: turnURL,
+                  roomID: signalingService.currentRoomID,
+                  joinCode: signalingService.currentJoinCode,
+                  sessionToken: token
+              ) else {
+            return
+        }
+
+        applyTURNConfiguration(
+            servers: config.servers,
+            username: config.username,
+            credential: config.credential
+        )
+        peerConnection?.setConfiguration(makePeerConnectionConfiguration())
     }
 
     func signalingDidUpdate() {
         switch signalingService.state {
         case .joined:
+            Task { @MainActor [weak self] in
+                await self?.refreshTURNConfigurationIfAuthorized()
+            }
             switch signalingService.currentRole {
             case .viewer:
-                if signalingService.hostAvailable {
+                if signalingService.hostAvailable && signalingService.viewerApproved {
                     startViewerIfNeeded()
                 }
             case .host:
@@ -147,6 +193,7 @@ final class WebRTCService: NSObject, ObservableObject {
         }
 
         self.peerConnection = peerConnection
+        diagnostics.setPeerConnection(peerConnection)
         state = .negotiating
         scheduleNegotiationTimeout()
 
@@ -200,6 +247,7 @@ final class WebRTCService: NSObject, ObservableObject {
         }
 
         self.peerConnection = peerConnection
+        diagnostics.setPeerConnection(peerConnection)
 
         #if os(macOS)
         let videoSource = factory.videoSource(forScreenCast: true)
@@ -301,6 +349,14 @@ final class WebRTCService: NSObject, ObservableObject {
         self.quality = quality
     }
 
+    func applyTURNConfiguration(servers: [String], username: String, credential: String) {
+        let defaults = UserDefaults.standard
+        defaults.set(servers.joined(separator: ","), forKey: "blinkcast.turnServers")
+        defaults.set(username, forKey: "blinkcast.turnUsername")
+        defaults.set(credential, forKey: "blinkcast.turnCredential")
+        NSLog("BlinkCast TURN configuration applied servers=\(servers.count)")
+    }
+
     #if os(iOS)
     func prepareForBackgroundBroadcast() {
         NSLog("BlinkCast preparing background broadcast handoff")
@@ -343,6 +399,7 @@ final class WebRTCService: NSObject, ObservableObject {
         peerConnectionState = "closed"
         iceConnectionState = "closed"
         lastError = nil
+        diagnostics.setPeerConnection(nil)
         #if os(iOS) || os(macOS)
         let captureService = screenCaptureService
         screenCaptureService = nil
@@ -378,6 +435,52 @@ final class WebRTCService: NSObject, ObservableObject {
                 self.startHostingIfNeeded()
             }
         }
+    }
+
+    private func attemptICERestart() {
+        guard iceRestartTask == nil,
+              let peerConnection,
+              signalingService.state == .joined else { return }
+
+        iceRestartTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let constraints = RTCMediaConstraints(
+                mandatoryConstraints: ["IceRestart": "true"],
+                optionalConstraints: nil
+            )
+            await withCheckedContinuation { continuation in
+                self.webrtcQueue.async {
+                    peerConnection.offer(for: constraints) { [weak self] description, error in
+                        guard let self, let description, error == nil else {
+                            continuation.resume()
+                            return
+                        }
+                        self.webrtcQueue.async {
+                            peerConnection.setLocalDescription(description) { [weak self] _ in
+                                Task { @MainActor in
+                                    self?.sendLocalCandidateRestartOffer(description.sdp)
+                                    continuation.resume()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            try? await Task.sleep(for: .seconds(8))
+            if self.peerConnection?.iceConnectionState != .connected {
+                self.scheduleReconnect()
+            }
+            self.iceRestartTask = nil
+        }
+    }
+
+    private func sendLocalCandidateRestartOffer(_ sdp: String) {
+        var signal: [String: Any] = [
+            "from": signalingService.currentClientID,
+            "offer": ["type": "offer", "sdp": sdp]
+        ]
+        if let remoteClientID { signal["to"] = remoteClientID }
+        signalingService.sendSignal(signal)
     }
 
     private func resetPeerConnectionForReconnect() {
@@ -438,45 +541,52 @@ final class WebRTCService: NSObject, ObservableObject {
         let configuration = RTCConfiguration()
         configuration.sdpSemantics = .unifiedPlan
         configuration.bundlePolicy = .maxBundle
-        configuration.iceCandidatePoolSize = 1
-        let configuredURLs = UserDefaults.standard.string(
-            forKey: "blinkcast.iceServerURLs"
-        )?
+        configuration.iceCandidatePoolSize = 10
+        
+        let defaults = UserDefaults.standard
+        let customTURNURLs = defaults.string(forKey: "blinkcast.turnServers")?
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty } ?? []
 
-        if configuredURLs.isEmpty {
-            configuration.iceServers = [
-                RTCIceServer(urlStrings: [
-                    "stun:stun.l.google.com:19302",
-                    "stun:stun1.l.google.com:19302"
-                ]),
-                RTCIceServer(
-                    urlStrings: [
-                        "turn:openrelay.metered.ca:80",
-                        "turn:openrelay.metered.ca:443",
-                        "turn:openrelay.metered.ca:443?transport=tcp"
-                    ],
-                    username: "openrelayproject",
-                    credential: "openrelayproject"
-                )
-            ]
+        var iceServers: [RTCIceServer] = []
+
+        // Always include Google's public STUN servers as fallback
+        iceServers.append(RTCIceServer(urlStrings: [
+            "stun:stun.l.google.com:19302",
+            "stun:stun1.l.google.com:19302",
+            "stun:stun2.l.google.com:19302"
+        ]))
+
+        // Add custom or production TURN servers if configured
+        if !customTURNURLs.isEmpty {
+            let turnUsername = defaults.string(forKey: "blinkcast.turnUsername") ?? ""
+            let turnCredential = defaults.string(forKey: "blinkcast.turnCredential") ?? ""
+            
+            if !turnUsername.isEmpty && !turnCredential.isEmpty {
+                iceServers.append(RTCIceServer(
+                    urlStrings: customTURNURLs,
+                    username: turnUsername,
+                    credential: turnCredential
+                ))
+                NSLog("BlinkCast WebRTC using custom TURN servers count=\(customTURNURLs.count)")
+            } else {
+                NSLog("BlinkCast WebRTC custom TURN URLs configured but missing credentials")
+            }
         } else {
-            let username = UserDefaults.standard.string(
-                forKey: "blinkcast.iceServerUsername"
-            ) ?? ""
-            let credential = UserDefaults.standard.string(
-                forKey: "blinkcast.iceServerCredential"
-            ) ?? ""
-            configuration.iceServers = [
-                RTCIceServer(
-                    urlStrings: configuredURLs,
-                    username: username,
-                    credential: credential
-                )
-            ]
+            // Fallback to public TURN relay for development/demo
+            iceServers.append(RTCIceServer(
+                urlStrings: [
+                    "turn:openrelay.metered.ca:80",
+                    "turn:openrelay.metered.ca:443",
+                    "turn:openrelay.metered.ca:443?transport=tcp"
+                ],
+                username: "openrelayproject",
+                credential: "openrelayproject"
+            ))
         }
+
+        configuration.iceServers = iceServers
         return configuration
     }
 
@@ -920,6 +1030,8 @@ extension WebRTCService: RTCPeerConnectionDelegate {
             self.peerConnectionState = state
             switch newState {
             case .connected:
+                self.iceRestartTask?.cancel()
+                self.iceRestartTask = nil
                 NSLog("BlinkCast peer connection connected; attempting remote-track attach")
                 self.negotiationTimeoutTask?.cancel()
                 self.negotiationTimeoutTask = nil
@@ -927,9 +1039,9 @@ extension WebRTCService: RTCPeerConnectionDelegate {
                 self.state = .connected
             case .disconnected:
                 NSLog("BlinkCast peer connection disconnected;")
-                self.scheduleReconnect()
+                self.attemptICERestart()
             case .failed:
-                self.fail("WebRTC connection failed.")
+                self.attemptICERestart()
             case .closed:
                 if self.state != .idle {
                     self.state = .idle
@@ -962,13 +1074,17 @@ extension WebRTCService: RTCPeerConnectionDelegate {
 
 #if os(macOS)
 final class BlinkMacRTCVideoView: NSView, RTCVideoRenderer {
-    private static let extendedRangeColorSpace = CGColorSpace(name: CGColorSpace.extendedSRGB) ?? CGColorSpaceCreateDeviceRGB()
+        private static let extendedRangeColorSpace = CGColorSpace(name: CGColorSpace.extendedSRGB) ?? CGColorSpaceCreateDeviceRGB()
 
-    private let ciContext = CIContext(options: [
-        .workingColorSpace: BlinkMacRTCVideoView.extendedRangeColorSpace,
-        .outputColorSpace: BlinkMacRTCVideoView.extendedRangeColorSpace,
-        .workingFormat: CIFormat.RGBAh
-    ])
+    // Single shared CIContext - avoids per-frame allocation overhead
+    private static let ciContext: CIContext = {
+        let attrs: [CIContextOption: Any] = [
+            .workingColorSpace: BlinkMacRTCVideoView.extendedRangeColorSpace,
+            .outputColorSpace: BlinkMacRTCVideoView.extendedRangeColorSpace,
+            .workingFormat: CIFormat.RGBAh
+        ]
+        return CIContext(options: attrs)
+    }()
     private nonisolated(unsafe) var didRenderFrame = false
     private nonisolated(unsafe) var lastReportedSize: CGSize = .zero
     // Set once from the SwiftUI wrapper; invoked from the WebRTC render thread whenever the stream's resolution changes.
@@ -994,18 +1110,18 @@ final class BlinkMacRTCVideoView: NSView, RTCVideoRenderer {
 
     @objc nonisolated func setSize(_ size: CGSize) {}
 
-    @objc nonisolated func renderFrame(_ frame: RTCVideoFrame?) {
+        @objc nonisolated func renderFrame(_ frame: RTCVideoFrame?) {
         guard let frame else {
             NSLog("BlinkCast macOS renderer received nil video frame")
             return
         }
 
-        guard let pixelBuffer = makeRenderablePixelBuffer(from: frame.buffer) else {
-            NSLog("BlinkCast macOS renderer could not convert frame buffer type=\(type(of: frame.buffer))")
+                guard let cvPixelBuffer = frame.buffer as? RTCCVPixelBuffer else {
+            NSLog("BlinkCast macOS renderer non-CVPixelBuffer frame buffer type=\(type(of: frame.buffer))")
             return
         }
+        let pixelBuffer = cvPixelBuffer.pixelBuffer
 
-        var ciImage = CIImage(cvPixelBuffer: pixelBuffer)
         let rect = CGRect(
             x: 0,
             y: 0,
@@ -1013,6 +1129,38 @@ final class BlinkMacRTCVideoView: NSView, RTCVideoRenderer {
             height: CVPixelBufferGetHeight(pixelBuffer)
         )
 
+        // Calculate oriented size without CIImage
+        let orientedSize: CGSize
+        switch frame.rotation {
+        case ._90, ._270:
+            orientedSize = CGSize(width: rect.height, height: rect.width)
+        default:
+            orientedSize = rect.size
+        }
+
+        if !didRenderFrame {
+            didRenderFrame = true
+            NSLog("BlinkCast rendered first remote video frame size=\(orientedSize) rotation=\(frame.rotation.rawValue)")
+        }
+
+        if orientedSize != lastReportedSize {
+            lastReportedSize = orientedSize
+            onVideoSizeChange?(orientedSize)
+        }
+
+        // Fast path: no rotation, use pixel buffer directly (zero-copy, no CI)
+        if frame.rotation == ._0 {
+            DispatchQueue.main.async { [weak self] in
+                guard let layer = self?.layer else { return }
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
+                layer.contents = pixelBuffer
+                CATransaction.commit()
+            }
+            return
+        }
+
+                var ciImage = CIImage(cvPixelBuffer: pixelBuffer)
         switch frame.rotation {
         case ._90:
             ciImage = ciImage.oriented(.right)
@@ -1025,119 +1173,20 @@ final class BlinkMacRTCVideoView: NSView, RTCVideoRenderer {
         }
 
         let outputRect = ciImage.extent.integral
-        guard let cgImage = ciContext.createCGImage(
+        guard let cgImage = BlinkMacRTCVideoView.ciContext.createCGImage(
             ciImage,
-            from: outputRect,
-            format: .RGBAh,
-            colorSpace: Self.extendedRangeColorSpace
+            from: outputRect
         ) else {
             NSLog("BlinkCast macOS renderer could not create CGImage size=\(rect.size)")
             return
         }
 
-        if !didRenderFrame {
-            didRenderFrame = true
-            NSLog("BlinkCast rendered first remote video frame size=\(rect.size) rotation=\(frame.rotation.rawValue)")
-        }
-
-        let orientedSize = outputRect.size
-        if orientedSize != lastReportedSize {
-            lastReportedSize = orientedSize
-            let callback = onVideoSizeChange
-            DispatchQueue.main.async {
-                callback?(orientedSize)
-            }
-        }
-
         DispatchQueue.main.async { [weak self] in
-            self?.layer?.contents = cgImage
-        }
-    }
-
-    private nonisolated func makeRenderablePixelBuffer(
-        from buffer: RTCVideoFrameBuffer
-    ) -> CVPixelBuffer? {
-        if let cvPixelBuffer = buffer as? RTCCVPixelBuffer {
-            return cvPixelBuffer.pixelBuffer
-        }
-
-        let i420Buffer = buffer.toI420()
-        let width = Int(i420Buffer.width)
-        let height = Int(i420Buffer.height)
-
-        var pixelBuffer: CVPixelBuffer?
-        let attributes: [CFString: Any] = [
-            kCVPixelBufferCGImageCompatibilityKey: true,
-            kCVPixelBufferCGBitmapContextCompatibilityKey: true
-        ]
-
-        let status = CVPixelBufferCreate(
-            kCFAllocatorDefault,
-            width,
-            height,
-            kCVPixelFormatType_420YpCbCr8Planar,
-            attributes as CFDictionary,
-            &pixelBuffer
-        )
-
-        guard status == kCVReturnSuccess,
-              let pixelBuffer else {
-            NSLog("BlinkCast macOS renderer failed to allocate pixel buffer status=\(status)")
-            return nil
-        }
-
-        CVPixelBufferLockBaseAddress(pixelBuffer, [])
-        defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, []) }
-
-        guard CVPixelBufferGetPlaneCount(pixelBuffer) == 3 else {
-            NSLog("BlinkCast macOS renderer expected 3 planes but got \(CVPixelBufferGetPlaneCount(pixelBuffer))")
-            return nil
-        }
-
-        copyPlane(
-            from: i420Buffer.dataY,
-            sourceStride: Int(i420Buffer.strideY),
-            to: CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 0),
-            destinationStride: CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, 0),
-            width: width,
-            height: height
-        )
-
-        copyPlane(
-            from: i420Buffer.dataU,
-            sourceStride: Int(i420Buffer.strideU),
-            to: CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 1),
-            destinationStride: CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, 1),
-            width: (width + 1) / 2,
-            height: (height + 1) / 2
-        )
-
-        copyPlane(
-            from: i420Buffer.dataV,
-            sourceStride: Int(i420Buffer.strideV),
-            to: CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 2),
-            destinationStride: CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer, 2),
-            width: (width + 1) / 2,
-            height: (height + 1) / 2
-        )
-
-        return pixelBuffer
-    }
-
-    private nonisolated func copyPlane(
-        from source: UnsafePointer<UInt8>,
-        sourceStride: Int,
-        to destination: UnsafeMutableRawPointer?,
-        destinationStride: Int,
-        width: Int,
-        height: Int
-    ) {
-        guard let destination else { return }
-
-        for row in 0..<height {
-            let sourceRow = source.advanced(by: row * sourceStride)
-            let destinationRow = destination.advanced(by: row * destinationStride)
-            destinationRow.copyMemory(from: sourceRow, byteCount: width)
+            guard let layer = self?.layer else { return }
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            layer.contents = cgImage
+            CATransaction.commit()
         }
     }
 }

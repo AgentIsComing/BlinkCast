@@ -95,7 +95,32 @@ wss://blinkcast-signaling.<your-subdomain>.workers.dev/signal
 
 The Worker adds the room ID to the returned `wsUrl`, so the existing Apple signaling client can connect to the correct Durable Object.
 
-## 7. What a successful session does
+## 7. Configure production TURN
+
+The Worker intentionally has no fake TURN values. Add real relay credentials
+before deploying:
+
+Create a TURN key in Cloudflare Realtime, then store the key ID and the API
+token used to generate short-lived credentials:
+
+```sh
+npx wrangler secret put TURN_KEY_ID
+npx wrangler secret put TURN_API_TOKEN
+```
+
+BlinkCast generates one-hour credentials from Cloudflare for each configuration
+request. Cloudflare's TURN endpoints are `turn.cloudflare.com` on UDP 3478 and
+TLS 5349/443; the Worker receives the complete server list from Cloudflare.
+
+Verify the configuration with:
+
+```sh
+curl https://blinkcast-signaling.<your-subdomain>.workers.dev/turn-config
+```
+
+Do not commit TURN credentials or placeholder values to `wrangler.toml`.
+
+## 8. What a successful session does
 
 1. Host calls `/register`.
 2. Worker creates a five-digit code.
@@ -116,8 +141,7 @@ Before public release:
 
 - Add authentication tokens to WebSocket joins.
 - Rate-limit code resolution.
-- Replace the demo TURN credentials in the Apple app with temporary TURN credentials.
-- Add a real TURN service such as coturn, Metered, or Twilio.
+- Add a real TURN service such as coturn, Cloudflare Realtime TURN, Metered, or Twilio.
 - Add viewer approval messages.
 - Add per-viewer peer connections for multiple viewers.
 - Use a custom domain and `wss://` in production.

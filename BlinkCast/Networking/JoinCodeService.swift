@@ -17,6 +17,8 @@ final class JoinCodeService: ObservableObject {
     struct ResolvedRoom {
         let roomID: String
         let signalURL: String
+        let sessionToken: String?
+        let joinCode: String?
     }
 
     @Published private(set) var joinState: JoinState = .idle
@@ -35,7 +37,7 @@ final class JoinCodeService: ObservableObject {
     }
 
     @discardableResult
-    func joinCode(_ code: String) async -> Bool {
+    func joinCode(_ code: String, password: String = "") async -> Bool {
         let normalizedCode = String(
             code.filter(\.isNumber).prefix(5)
         )
@@ -48,7 +50,7 @@ final class JoinCodeService: ObservableObject {
         joinState = .resolving
 
         do {
-            let room = try await resolveCode(normalizedCode)
+            let room = try await resolveCode(normalizedCode, password: password)
             return connect(to: room)
         } catch {
             joinedRoom = nil
@@ -134,16 +136,22 @@ final class JoinCodeService: ObservableObject {
         signalingService.connect(
             signalURL: room.signalURL,
             roomID: room.roomID,
-            role: .viewer
+            role: .viewer,
+            sessionToken: room.sessionToken,
+            joinCode: room.joinCode
         )
 
         return true
     }
 
-    private func resolveCode(_ code: String) async throws -> ResolvedRoom {
+    private func resolveCode(_ code: String, password: String) async throws -> ResolvedRoom {
+        var payload: [String: Any] = ["code": code]
+        if !password.isEmpty {
+            payload["password"] = password
+        }
         let object = try await postJSON(
             path: "/resolve",
-            payload: ["code": code]
+            payload: payload
         )
 
         guard
@@ -155,9 +163,16 @@ final class JoinCodeService: ObservableObject {
             throw JoinError.invalidResponse
         }
 
+        let sessionToken = object["sessionToken"] as? String
+        guard validateSessionToken(sessionToken, roomID: roomID, code: code) else {
+            throw JoinError.server("The session token is invalid or expired.")
+        }
+
         return ResolvedRoom(
             roomID: roomID,
-            signalURL: wsURL
+            signalURL: wsURL,
+            sessionToken: sessionToken,
+            joinCode: code
         )
     }
 
@@ -185,10 +200,67 @@ final class JoinCodeService: ObservableObject {
                 ? object["roomId"] as! String
                 : roomID
 
+        let sessionToken = object["sessionToken"] as? String
+        guard validateSessionToken(sessionToken, roomID: resolvedRoomID, code: "") else {
+            throw JoinError.server("The room authorization is invalid or expired.")
+        }
+
         return ResolvedRoom(
             roomID: resolvedRoomID,
-            signalURL: wsURL
+            signalURL: wsURL,
+            sessionToken: sessionToken,
+            joinCode: ""
         )
+    }
+
+    private func validateSessionToken(_ token: String?, roomID: String, code: String) -> Bool {
+        guard let token, !token.isEmpty else {
+            NSLog("BlinkCast TOKEN VALIDATE FAIL: token is nil or empty")
+            return false
+        }
+        let parts = token.split(separator: ".")
+        guard parts.count == 3 else {
+            NSLog("BlinkCast TOKEN VALIDATE FAIL: expected 3 parts, got \(parts.count) token=\(token)")
+            return false
+        }
+
+        let payloadSegment = String(parts[1])
+        guard let payloadData = decodeBase64URL(payloadSegment),
+              let payload = try? JSONSerialization.jsonObject(with: payloadData) as? [String: Any]
+        else {
+            NSLog("BlinkCast TOKEN VALIDATE FAIL: could not decode payload segment=\(payloadSegment)")
+            return false
+        }
+
+        guard let tokenRoomID = payload["roomId"] as? String,
+              tokenRoomID == roomID,
+              let purpose = payload["purpose"] as? String,
+              purpose == "resolve",
+              let tokenCode = payload["code"] as? String,
+              (code.isEmpty || tokenCode == code),
+              let expValue = payload["exp"] as? NSNumber,
+              expValue.intValue > Int(Date().timeIntervalSince1970)
+        else {
+            NSLog("BlinkCast TOKEN VALIDATE FAIL: claim mismatch payload=\(payload) expectedRoomID=\(roomID) expectedCode=\(code)")
+            return false
+        }
+
+        NSLog("BlinkCast TOKEN VALIDATE OK: roomID=\(tokenRoomID) purpose=\(payload["purpose"] ?? "nil") exp=\(expValue.intValue)")
+        return true
+    }
+
+    private func decodeBase64URL(_ value: String) -> Data? {
+        var normalized = value.replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        let remainder = normalized.count % 4
+        if remainder > 0 {
+            normalized += String(repeating: "=", count: 4 - remainder)
+        }
+
+        guard let data = Data(base64Encoded: normalized) else {
+            return nil
+        }
+        return data
     }
 
     private func postJSON(

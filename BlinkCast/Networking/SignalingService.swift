@@ -25,11 +25,16 @@ final class SignalingService: NSObject, ObservableObject {
 
     @Published private(set) var state: ConnectionState = .disconnected
     @Published private(set) var hostAvailable = false
+    @Published private(set) var viewerApproved = false
     @Published private(set) var reconnectAttempt = 0
 
     var onSignal: ((SignalEnvelope) -> Void)?
     var onViewerJoined: (() -> Void)?
+    var onViewerList: (([String: Any]) -> Void)?
+    var onViewerJoinRequest: (([String: Any]) -> Void)?
+    var onRoomAnalytics: (([String: Any]) -> Void)?
     var onBroadcastEnded: (() -> Void)?
+    var onApprovalDecision: (([String: Any]) -> Void)?
 
     var currentClientID: String {
         clientID
@@ -39,6 +44,18 @@ final class SignalingService: NSObject, ObservableObject {
         role
     }
 
+    var currentSessionToken: String? {
+        sessionToken
+    }
+
+    var currentRoomID: String {
+        roomID
+    }
+
+    var currentJoinCode: String {
+        joinCode ?? ""
+    }
+
     private var webSocketTask: URLSessionWebSocketTask?
     private var urlSession: URLSession?
 
@@ -46,6 +63,9 @@ final class SignalingService: NSObject, ObservableObject {
     private var roomID = ""
     private var role: Role = .viewer
     private var clientID = ""
+    private var sessionToken: String?
+    private var joinCode: String?
+    private var requiresApproval = true
     private var shouldReconnect = false
     private var reconnectTask: Task<Void, Never>?
 
@@ -56,7 +76,10 @@ final class SignalingService: NSObject, ObservableObject {
     func connect(
         signalURL: String,
         roomID: String,
-        role: Role
+        role: Role,
+        sessionToken: String? = nil,
+        joinCode: String? = nil,
+        requiresApproval: Bool = true
     ) {
         NSLog("BlinkCast SIGNAL connect requested role=\(role.rawValue) room=\(roomID) url=\(signalURL)")
         disconnect()
@@ -85,8 +108,11 @@ final class SignalingService: NSObject, ObservableObject {
         self.signalURL = normalizedURL
         self.roomID = roomID
         self.role = role
+        self.sessionToken = sessionToken
+        self.joinCode = joinCode
+        self.requiresApproval = requiresApproval
         self.clientID = "\(role.rawValue)-\(UUID().uuidString.lowercased().prefix(8))"
-        NSLog("BlinkCast SIGNAL client identity created clientID=\(clientID)")
+        NSLog("BlinkCast SIGNAL client identity created clientID=\(clientID) sessionTokenPresent=\(sessionToken != nil) joinCodePresent=\(joinCode != nil)")
         UserDefaults(suiteName: "group.JaysApps.BlinkCast")?.set(
             clientID,
             forKey: "clientID"
@@ -127,6 +153,7 @@ final class SignalingService: NSObject, ObservableObject {
 
         state = .disconnected
         hostAvailable = false
+        viewerApproved = false
         reconnectAttempt = 0
     }
 
@@ -148,17 +175,29 @@ final class SignalingService: NSObject, ObservableObject {
     }
 
     private func sendJoin() {
-        let payload: [String: Any] = [
+        var payload: [String: Any] = [
             "type": "join",
             "role": role.rawValue,
             "roomId": roomID,
             "clientId": clientID
         ]
+        if role == .host {
+            payload["requiresApproval"] = requiresApproval
+        }
+
+        if role == .viewer {
+            if let sessionToken {
+                payload["sessionToken"] = sessionToken
+            }
+            if let joinCode {
+                payload["code"] = joinCode
+            }
+        }
 
         sendJSON(payload)
     }
 
-    private func sendJSON(_ payload: [String: Any]) {
+    func sendJSON(_ payload: [String: Any]) {
         guard
             let webSocketTask,
             JSONSerialization.isValidJSONObject(payload)
@@ -267,7 +306,10 @@ final class SignalingService: NSObject, ObservableObject {
             self.connect(
                 signalURL: signalURL.absoluteString,
                 roomID: self.roomID,
-                role: self.role
+                role: self.role,
+                sessionToken: self.sessionToken,
+                joinCode: self.joinCode,
+                requiresApproval: self.requiresApproval
             )
             self.reconnectAttempt = attempt
         }
@@ -305,11 +347,14 @@ final class SignalingService: NSObject, ObservableObject {
         case "joined":
             NSLog("BlinkCast SIGNAL joined hostAvailable=\(dictionary["hostAvailable"] as? Bool ?? false)")
             state = .joined
+            viewerApproved = role == .host || dictionary["requiresModeration"] as? Bool == false
 
             if let available = dictionary["hostAvailable"] as? Bool {
                 hostAvailable = available
 
                 if role == .viewer && !available {
+                    state = .waitingForHost
+                } else if role == .viewer && !viewerApproved {
                     state = .waitingForHost
                 }
             }
@@ -317,10 +362,28 @@ final class SignalingService: NSObject, ObservableObject {
         case "host-available":
             NSLog("BlinkCast SIGNAL host-available")
             hostAvailable = true
-            state = .joined
+            if role == .viewer && !viewerApproved {
+                state = .waitingForHost
+            } else {
+                state = .joined
+            }
 
         case "viewer-joined":
             onViewerJoined?()
+
+        case "viewer-join-request":
+            onViewerJoinRequest?(dictionary)
+
+        case "viewer-list":
+            onViewerList?(dictionary)
+
+        case "approval":
+            viewerApproved = (dictionary["status"] as? String) == "approved"
+            if viewerApproved { state = .joined }
+            onApprovalDecision?(dictionary)
+
+        case "room-analytics":
+            onRoomAnalytics?(dictionary)
 
         case "signal":
             guard let signalData = dictionary["data"] as? [String: Any] else {

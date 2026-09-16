@@ -14,3 +14,5 @@ new_sqlite_classes = ["Room", "CodeRegistry"]
 
 [vars]
 ROOM_TTL_SECONDS = "900"
+MAX_VIEWERS_PER_ROOM = "8"
+ALLOWED_SIGNAL_HOSTS = "blinkcast-signaling.jaydenrmaine.workers.dev,blinkcast-signaling.example.com,*.trycloudflare.com"

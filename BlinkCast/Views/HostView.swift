@@ -42,6 +42,7 @@ struct HostView: View {
     @StateObject private var hostService = HostSessionService.shared
     @StateObject private var signalingService = SignalingService.shared
     @StateObject private var webRTCService = WebRTCService.shared
+    @StateObject private var analyticsService = RoomAnalyticsService.shared
 
     @State private var sessionType: SessionType = .screenShare
     @State private var source: ShareSource = .entireScreen
@@ -58,7 +59,7 @@ struct HostView: View {
     @State private var shareSystemAudio = true
     @State private var shareMicrophone = false
     @State private var shareCamera = false
-    @State private var quality: WebRTCService.Quality = .balanced
+    @State private var quality: WebRTCService.Quality = .ultraLowLatency
 
     @State private var showAdvanced = false
     @State private var isHosting = false
@@ -77,6 +78,7 @@ struct HostView: View {
                     livePreview
                     liveControls
                     liveInformation
+                                    liveAnalytics
                 } else {
                     setupHeader
                     sessionTypePicker
@@ -291,6 +293,7 @@ struct HostView: View {
                 )
 
                 Picker("Quality", selection: $quality) {
+                    Text("Ultra-Low Latency").tag(WebRTCService.Quality.ultraLowLatency)
                     Text("Low").tag(WebRTCService.Quality.low)
                     Text("Balanced").tag(WebRTCService.Quality.balanced)
                     Text("High").tag(WebRTCService.Quality.high)
@@ -828,7 +831,8 @@ struct HostView: View {
         let started = await hostService.startSession(
             signalURL: signalingURL,
             requestedRoomID: roomName,
-            password: roomPassword
+            password: roomPassword,
+            requiresApproval: requireApproval
         )
 
         if !started {
@@ -882,6 +886,96 @@ struct HostView: View {
             break
         }
     }
+
+    private func formatBitrate(_ bitrate: Int64) -> String {
+        if bitrate >= 1_000_000_000 {
+            return String(format: "%.1f Gbps", Double(bitrate) / 1_000_000_000)
+        } else if bitrate >= 1_000_000 {
+            return String(format: "%.1f Mbps", Double(bitrate) / 1_000_000)
+        } else if bitrate >= 1_000 {
+            return String(format: "%.1f Kbps", Double(bitrate) / 1_000)
+        } else {
+            return "\(bitrate) bps"
+        }
+    }
+
+    private var liveAnalytics: some View {
+        VStack(spacing: 14) {
+            HStack {
+                Text("Room Analytics")
+                    .font(.headline)
+
+                Spacer()
+
+                NavigationLink(destination: RoomAnalyticsView(analyticsService: analyticsService)) {
+                    Image(systemName: "chart.bar.xaxis")
+                        .font(.caption)
+                }
+            }
+
+            if let stats = analyticsService.stats {
+                BlinkGlassCard {
+                    VStack(spacing: 12) {
+                        HStack {
+                            Text("Total Viewers: \(stats.totalViewers)")
+                                .font(.callout)
+                            Spacer()
+                            Text("Peak: \(stats.peakViewerCount)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Divider()
+
+                        HStack {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Bitrate").font(.caption2).foregroundStyle(.secondary)
+                                Text(formatBitrate(stats.totalBitrate)).font(.callout).fontWeight(.semibold)
+                            }
+
+                            Spacer()
+
+                            VStack(alignment: .trailing, spacing: 6) {
+                                Text("Latency").font(.caption2).foregroundStyle(.secondary)
+                                Text("\(stats.averageLatency)ms").font(.callout).fontWeight(.semibold)
+                            }
+                        }
+
+                        HStack {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Packet Loss").font(.caption2).foregroundStyle(.secondary)
+                                Text(String(format: "%.2f%%", stats.averagePacketLoss * 100)).font(.callout).fontWeight(.semibold)
+                            }
+
+                            Spacer()
+
+                            VStack(alignment: .trailing, spacing: 6) {
+                                Text("Host Active").font(.caption2).foregroundStyle(.secondary)
+                                Text(stats.isHostActive ? "Yes" : "No").font(.callout).fontWeight(.semibold).foregroundStyle(stats.isHostActive ? .green : .red)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+            } else {
+                BlinkGlassCard {
+                    HStack {
+                        Image(systemName: "chart.bar.xaxis")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        Text("No analytics data yet")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+
+                        Spacer()
+                    }
+                    .padding(.vertical, 8)
+                }
+            }
+        }
+    }
+
 }
 
 #Preview {

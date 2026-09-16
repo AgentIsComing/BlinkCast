@@ -18,6 +18,8 @@ final class HostSessionService: ObservableObject {
     @Published private(set) var activeRoomID = ""
 
     private let signalingService = SignalingService.shared
+    private let sessionBindingKey = "sessionSecuritySignature"
+    private let sessionExpiryKey = "sessionExpiresAt"
 
     private let codeServiceURL =
         "https://blinkcast-signaling.jaydenrmaine.workers.dev"
@@ -28,7 +30,8 @@ final class HostSessionService: ObservableObject {
     func startSession(
         signalURL: String,
         requestedRoomID: String,
-        password: String
+        password: String,
+        requiresApproval: Bool = true
     ) async -> Bool {
         NSLog("BlinkCast HOST startSession signalURL=\(signalURL) requestedRoom=\(requestedRoomID.isEmpty ? "<empty>" : requestedRoomID) passwordPresent=\(!password.isEmpty)")
         let normalizedSignalURL = normalizeSignalURL(signalURL)
@@ -53,11 +56,11 @@ final class HostSessionService: ObservableObject {
         NSLog("BlinkCast HOST registering room=\(roomID) normalizedSignalURL=\(normalizedSignalURL)")
 
         do {
-            let code = try await registerCode(
+            let registration = try await registerCode(
                 signalURL: normalizedSignalURL,
                 roomID: roomID
             )
-            NSLog("BlinkCast HOST register code succeeded code=\(code)")
+            NSLog("BlinkCast HOST register code succeeded code=\(registration.code)")
 
             if !trimmedRoomID.isEmpty && !password.isEmpty {
                 guard password.count >= 4 else {
@@ -72,26 +75,35 @@ final class HostSessionService: ObservableObject {
                 NSLog("BlinkCast HOST password room registration succeeded")
             }
 
-            sessionCode = code
+            sessionCode = registration.code
             activeRoomID = roomID
             let sharedDefaults = UserDefaults(
                 suiteName: "group.JaysApps.BlinkCast"
             )
             NSLog("BlinkCast HOST App Group available=\(sharedDefaults != nil)")
+            let hostClientID = "host-broadcast-\(UUID().uuidString.lowercased().prefix(8))"
+            let nonce = SessionSecurityBinding.generateNonce()
+            let expiresAt = SessionSecurityBinding.expiryDate()
+            let signature = SessionSecurityBinding.signature(
+                roomID: roomID,
+                clientID: hostClientID,
+                nonce: nonce,
+                expiresAt: expiresAt
+            )
+
             sharedDefaults?.set(
                 normalizedSignalURL,
                 forKey: "signalURL"
             )
             sharedDefaults?.set(roomID, forKey: "roomID")
-            NSLog("BlinkCast HOST App Group wrote signalURL=\(normalizedSignalURL) roomID=\(roomID)")
+            sharedDefaults?.set(hostClientID, forKey: "clientID")
+            sharedDefaults?.set(nonce, forKey: "sessionNonce")
+            sharedDefaults?.set(expiresAt.timeIntervalSince1970, forKey: sessionExpiryKey)
+            sharedDefaults?.set(signature, forKey: sessionBindingKey)
+            NSLog("BlinkCast HOST App Group wrote signalURL=\(normalizedSignalURL) roomID=\(roomID) clientID=\(hostClientID) expiresAt=\(expiresAt.ISO8601Format()) signaturePresent=\(signature.count > 0)")
 
             #if os(iOS)
             NSLog("BlinkCast iOS host room ready for broadcast extension")
-            sharedDefaults?.set(
-                "host-broadcast-\(UUID().uuidString.lowercased().prefix(8))",
-                forKey: "clientID"
-            )
-            NSLog("BlinkCast HOST App Group wrote broadcast clientID")
             state = .ready
             return true
             #else
@@ -100,7 +112,10 @@ final class HostSessionService: ObservableObject {
             signalingService.connect(
                 signalURL: normalizedSignalURL,
                 roomID: roomID,
-                role: .host
+                role: .host,
+                sessionToken: registration.sessionToken,
+                joinCode: registration.code,
+                requiresApproval: requiresApproval
             )
 
             return true
@@ -145,6 +160,15 @@ final class HostSessionService: ObservableObject {
         signalingService.sendBroadcastEnd()
         signalingService.disconnect()
 
+        if let sharedDefaults = UserDefaults(suiteName: "group.JaysApps.BlinkCast") {
+            sharedDefaults.removeObject(forKey: "signalURL")
+            sharedDefaults.removeObject(forKey: "roomID")
+            sharedDefaults.removeObject(forKey: "clientID")
+            sharedDefaults.removeObject(forKey: "sessionNonce")
+            sharedDefaults.removeObject(forKey: sessionExpiryKey)
+            sharedDefaults.removeObject(forKey: sessionBindingKey)
+        }
+
         state = .idle
         sessionCode = "-----"
         activeRoomID = ""
@@ -159,7 +183,7 @@ final class HostSessionService: ObservableObject {
     private func registerCode(
         signalURL: String,
         roomID: String
-    ) async throws -> String {
+    ) async throws -> (code: String, sessionToken: String) {
         NSLog("BlinkCast HOST POST /register room=\(roomID)")
         let object = try await postJSON(
             path: "/register",
@@ -172,12 +196,14 @@ final class HostSessionService: ObservableObject {
 
         guard
             let code = object["code"] as? String,
-            code.count == 5
+            code.count == 5,
+            let sessionToken = object["sessionToken"] as? String,
+            !sessionToken.isEmpty
         else {
             throw HostError.invalidResponse
         }
 
-        return code
+        return (code, sessionToken)
     }
 
     private func registerRoom(

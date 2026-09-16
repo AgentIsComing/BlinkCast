@@ -224,7 +224,7 @@ final class ScreenCaptureService: NSObject, @unchecked Sendable {
             value: 1,
             timescale: CMTimeScale(quality.framesPerSecond)
         )
-        configuration.queueDepth = 3
+        configuration.queueDepth = 1
         configuration.pixelFormat = kCVPixelFormatType_32BGRA
 
         let stream = SCStream(

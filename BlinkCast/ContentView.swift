@@ -9,11 +9,19 @@ struct ContentView: View {
     private var hasCompletedOnboarding = false
 
     var body: some View {
+        #if os(iOS)
+        if hasCompletedOnboarding {
+            MobileHomeView()
+        } else {
+            OnboardingView()
+        }
+        #else
         if hasCompletedOnboarding {
             MainAppView()
         } else {
             OnboardingView()
         }
+        #endif
     }
 }
 
@@ -62,27 +70,41 @@ struct MainAppView: View {
     }
 
     @State private var selection: Destination? = .home
+    @State private var isStreamFullscreen = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            customTitleBar
+        ZStack {
+            VStack(spacing: 0) {
+                customTitleBar
 
-            NavigationSplitView {
-                sidebar
-            } detail: {
-                detailContent
+                NavigationSplitView {
+                    sidebar
+                } detail: {
+                    detailContent
+                }
+                .navigationSplitViewStyle(.balanced)
             }
-            .navigationSplitViewStyle(.balanced)
-        }
-        .background(BlinkBackground())
-        .ignoresSafeArea(edges: .top)
-        .onChange(of: webRTCService.remoteVideoTrack) { _, track in
-            guard track != nil,
-                  signalingService.currentRole == .viewer else {
-                return
+            .background(BlinkBackground())
+            .ignoresSafeArea(edges: .top)
+            .onChange(of: webRTCService.remoteVideoTrack) { _, track in
+                guard track != nil,
+                      signalingService.currentRole == .viewer else {
+                    return
+                }
+                if selection != .join {
+                    selection = .join
+                }
             }
-            if selection != .join {
-                selection = .join
+
+            // Fullscreen video overlay - covers entire window
+            if isStreamFullscreen,
+               let track = webRTCService.remoteVideoTrack {
+                BlinkFullscreenVideoView(
+                    track: track,
+                    dismiss: { isStreamFullscreen = false }
+                )
+                .background(Color.black)
+                .zIndex(1000)
             }
         }
     }
@@ -212,7 +234,7 @@ struct MainAppView: View {
                 HostView()
 
             case .join:
-                JoinView()
+                JoinView(isStreamFullscreen: $isStreamFullscreen)
 
             case .settings:
                 SettingsView()

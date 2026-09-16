@@ -15,55 +15,45 @@ struct JoinView: View {
     @StateObject private var signalingService = SignalingService.shared
     @StateObject private var webRTCService = WebRTCService.shared
 
+    @Binding var isStreamFullscreen: Bool
     @State private var method: JoinMethod = .code
     @State private var joinCode = ""
     @State private var roomName = ""
     @State private var roomPassword = ""
-    @State private var isStreamFullscreen = false
     @State private var remoteVideoAspectRatio: CGFloat = 16 / 9
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 30) {
-                Spacer(minLength: 30)
+        ZStack {
+            ScrollView {
+                VStack(spacing: 30) {
+                    Spacer(minLength: 30)
 
-                header
+                    header
 
-                if let track = webRTCService.remoteVideoTrack {
-                    videoCard(track: track)
-                } else {
-                    joinCard
+                    if let track = webRTCService.remoteVideoTrack {
+                        videoCard(track: track)
+                    } else {
+                        joinCard
+                    }
+                }
+                .padding(30)
+                .frame(maxWidth: .infinity)
+            }
+            .navigationTitle("Join")
+            .onChange(of: signalingService.state) { _, _ in
+                joinService.updateFromSignaling()
+                webRTCService.signalingDidUpdate()
+            }
+            .onChange(of: method) { _, _ in
+                if !isConnected && !isBusy {
+                    joinService.resetJoinState()
                 }
             }
-            .padding(30)
-            .frame(maxWidth: .infinity)
-        }
-        .navigationTitle("Join")
-        .onChange(of: signalingService.state) { _, _ in
-            joinService.updateFromSignaling()
-            webRTCService.signalingDidUpdate()
-        }
-        .onChange(of: method) { _, _ in
-            if !isConnected && !isBusy {
-                joinService.resetJoinState()
-            }
-        }
-        .onDisappear {
-            if signalingService.currentRole == .viewer,
-               !isConnected {
-                webRTCService.stop()
-            }
-        }
-        .overlay {
-            if isStreamFullscreen,
-               let track = webRTCService.remoteVideoTrack {
-                BlinkFullscreenVideoView(
-                    track: track,
-                    dismiss: { isStreamFullscreen = false }
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.black)
-                .zIndex(10)
+            .onDisappear {
+                if signalingService.currentRole == .viewer,
+                   !isConnected {
+                    webRTCService.stop()
+                }
             }
         }
         #if os(macOS)
@@ -172,10 +162,14 @@ struct JoinView: View {
                 )
             }
 
+            SecureField("Room password", text: $roomPassword)
+                .textFieldStyle(.roundedBorder)
+                .padding(.horizontal, 20)
+
             Button {
                 Task {
                     webRTCService.stop()
-                    await joinService.joinCode(joinCode)
+                    await joinService.joinCode(joinCode, password: roomPassword)
                 }
             } label: {
                 Label(
@@ -184,9 +178,9 @@ struct JoinView: View {
                 )
             }
             .buttonStyle(BlinkPrimaryButtonStyle())
-            .disabled(joinCode.count != 5 || isBusy || isConnected)
+            .disabled(joinCode.count != 5 || roomPassword.isEmpty || isBusy || isConnected)
             .opacity(
-                joinCode.count == 5 && !isBusy
+                joinCode.count == 5 && !roomPassword.isEmpty && !isBusy
                     ? 1
                     : 0.55
             )
@@ -377,7 +371,7 @@ struct JoinView: View {
 
         case .waitingForHost:
             statusRow(
-                text: "Connected. Waiting for host...",
+                text: signalingService.hostAvailable ? "Waiting for host approval..." : "Connected. Waiting for host...",
                 icon: "clock.fill",
                 tint: .orange
             )
@@ -532,7 +526,7 @@ struct JoinView: View {
     }
 }
 
-private struct BlinkFullscreenVideoView: View {
+struct BlinkFullscreenVideoView: View {
     let track: RTCVideoTrack
     let dismiss: () -> Void
 
@@ -566,5 +560,5 @@ private struct BlinkFullscreenVideoView: View {
 }
 
 #Preview {
-    JoinView()
+    JoinView(isStreamFullscreen: .constant(false))
 }

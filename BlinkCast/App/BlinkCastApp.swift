@@ -2,6 +2,9 @@ import SwiftUI
 #if os(macOS)
 import AppKit
 #endif
+#if os(iOS)
+import UIKit
+#endif
 
 @main
 struct BlinkCastApp: App {
@@ -10,6 +13,10 @@ struct BlinkCastApp: App {
 
     @AppStorage("appearance")
     private var appearance = "system"
+
+    #if os(iOS)
+    @UIApplicationDelegateAdaptor(BlinkCastAppDelegate.self) private var appDelegate
+    #endif
 
     var body: some Scene {
         WindowGroup {
@@ -29,6 +36,12 @@ struct BlinkCastApp: App {
             .preferredColorScheme(
                 preferredColorScheme
             )
+            .task {
+                PushNotificationService.shared.loadStoredToken()
+                #if os(iOS)
+                await PushNotificationService.shared.requestAuthorization()
+                #endif
+            }
         }
 
         #if os(macOS)
